@@ -8,7 +8,7 @@ public class StraightWire extends Wire{
     private Port inputPort;
     private Port outputPort;
     public StraightWire(ArrayList<Port> ports, int width, Color color) {
-        super(ports, width, color);
+        super(ports, color);
         initializeInputAndOutputPorts();
     }
     @Override
