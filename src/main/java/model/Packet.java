@@ -8,7 +8,6 @@ public class Packet {
     Wire wire;
     NetworkSystem networkSystem;
     PacketAndPortShape shape;
-
-
+    int radius;
 
 }
