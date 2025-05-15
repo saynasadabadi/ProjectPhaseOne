@@ -7,6 +7,10 @@ public class Vector {
         this.y = y;
     }
 
+    public Vector subtract(Vector other) {
+        return new Vector(this.x - other.x, this.y - other.y);
+    }
+
     public double getX() {
         return x;
     }
