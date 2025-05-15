@@ -52,6 +52,10 @@ public class NetworkPanel extends JPanel {
             return;
         }
 
+        for (NetworkSystem system : networkModel.getSystems()) {
+            drawNetworkSystem(g2d, system);
+        }
+
         for (Wire wire : networkModel.getWires()) {
             drawWire(g2d, wire);
         }
@@ -60,9 +64,6 @@ public class NetworkPanel extends JPanel {
             drawTemporaryWire(g2d, firstPortForWire.getAbsolutePosition(), currentMouseForWire);
         }
 
-        for (NetworkSystem system : networkModel.getSystems()) {
-            drawNetworkSystem(g2d, system);
-        }
 
         for (model.Packet packet : networkModel.getPackets()) {
             drawPacket(g2d, packet);
