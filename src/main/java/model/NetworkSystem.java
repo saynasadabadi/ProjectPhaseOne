@@ -30,6 +30,7 @@ public abstract class NetworkSystem {
         this.inputPorts = (inputPorts == null) ? new ArrayList<>() : inputPorts;
         this.outputPorts = (outputPorts == null) ? new ArrayList<>() : outputPorts;
         assignPortsToSystemAndPosition();
+        updateIndicatorState();
     }
 
     private void assignPortsToSystemAndPosition() {
@@ -100,5 +101,18 @@ public abstract class NetworkSystem {
             }
         }
         return null;
+    }
+
+    public void updateIndicatorState() {
+        List<Port> allPorts = getAllPorts();
+
+        boolean allConnected = true;
+        for (Port port : allPorts) {
+            if (!port.isConnected()) {
+                allConnected = false;
+                break;
+            }
+        }
+        this.indicatorState = allConnected ? IndicatorState.ON : IndicatorState.OFF;
     }
 }

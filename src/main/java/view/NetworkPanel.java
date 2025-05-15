@@ -90,20 +90,36 @@ public class NetworkPanel extends JPanel {
         int indH = system.getIndicatorHeight();
         float arc = 20.0f;
 
+        // Draw the body of the system
         g2d.setColor(new Color(80, 85, 90));
         g2d.fill(new RoundRectangle2D.Float(sysPos.x, sysPos.y + indH, width, bodyH, arc, arc));
         g2d.setColor(new Color(60,65,70));
         g2d.draw(new RoundRectangle2D.Float(sysPos.x, sysPos.y + indH, width, bodyH, arc, arc));
 
+        // --- Indicator Drawing Logic ---
+        Color indicatorFillColor;
+        Color indicatorBorderColor;
 
-        g2d.setColor(system.getIndicatorState().getColor());
+        if (system.getIndicatorState() == IndicatorState.ON) {
+            // Draw whitish when ON
+            indicatorFillColor = new Color(220, 220, 220); // A light gray/whitish color
+            indicatorBorderColor = new Color(180, 180, 180); // A slightly darker shade for the border
+        } else {
+            // Use the state's default color when OFF
+            indicatorFillColor = system.getIndicatorState().getColor();
+            indicatorBorderColor = system.getIndicatorState().getColor().darker();
+        }
+        // Draw the indicator part
+        g2d.setColor(indicatorFillColor);
         g2d.fill(new RoundRectangle2D.Float(sysPos.x, sysPos.y, width, indH, arc / 1.5f, arc / 1.5f));
-        g2d.setColor(system.getIndicatorState().getColor().darker());
+        g2d.setColor(indicatorBorderColor);
         g2d.draw(new RoundRectangle2D.Float(sysPos.x, sysPos.y, width, indH, arc / 1.5f, arc / 1.5f));
+        // --- End Indicator Drawing Logic ---
 
 
+        // Draw the ports
         for (Port port : system.getAllPorts()) {
-            drawPort(g2d, port);
+            drawPort(g2d, port); // Assuming drawPort method exists elsewhere
         }
     }
 

@@ -19,10 +19,19 @@ public class NetworkModel {
         if (system instanceof SourceNetworkSystem) {
             this.packets.addAll(((SourceNetworkSystem) system).getSenderStorage());
         }
+        system.updateIndicatorState();
     }
 
     public void addWire(Wire wire) {
         this.wires.add(wire);
+        if (wire.getPorts() != null) {
+            for (Port p : wire.getPorts()) {
+                if (p.getNetworkSystem() != null) {
+                    p.setConnectedWire(wire);
+                    p.getNetworkSystem().updateIndicatorState();
+                }
+            }
+        }
     }
 
     public void addPacket(Packet packet) {
@@ -35,12 +44,21 @@ public class NetworkModel {
 
     public void removeWire(Wire wire) {
         if (wire != null) {
+            List<NetworkSystem> systemsToUpdate = new ArrayList<>();
             for (Port p : wire.getPorts()) {
+                if (p.getNetworkSystem() != null) {
+                    if (!systemsToUpdate.contains(p.getNetworkSystem())) {
+                        systemsToUpdate.add(p.getNetworkSystem());
+                    }
+                }
                 if (p.getConnectedWire() == wire) {
                     p.setConnectedWire(null);
                 }
             }
             this.wires.remove(wire);
+            for (NetworkSystem sys : systemsToUpdate) {
+                sys.updateIndicatorState();
+            }
         }
     }
 
