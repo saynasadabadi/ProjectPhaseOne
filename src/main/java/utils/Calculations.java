@@ -1,6 +1,5 @@
 package utils;
-
-import model.Point;
+import java.awt.Point;
 
 public class Calculations {
     public static Double calculateDistance(Point point1, Point point2){

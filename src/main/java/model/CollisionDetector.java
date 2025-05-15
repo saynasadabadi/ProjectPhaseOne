@@ -1,5 +1,6 @@
 package model;
 
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,8 +48,8 @@ public class CollisionDetector {
             return false;
         }
 
-        ArrayList<Point> vertices1 = p1.getVertices();
-        ArrayList<Point> vertices2 = p2.getVertices();
+        List<java.awt.Point> vertices1 = p1.getVertices();
+        List<java.awt.Point> vertices2 = p2.getVertices();
 
         if (isSeparatingAxis(vertices1, vertices2)) {
             return false;
@@ -61,10 +62,10 @@ public class CollisionDetector {
         return true;
     }
 
-    private static boolean isSeparatingAxis(ArrayList<Point> vertsA, ArrayList<Point> vertsB) {
+    private static boolean isSeparatingAxis(List<java.awt.Point> vertsA, List<java.awt.Point> vertsB) {
         for (int i = 0; i < vertsA.size(); i++) {
-            Point p1 = vertsA.get(i);
-            Point p2 = vertsA.get((i + 1) % vertsA.size());
+            java.awt.Point p1 = vertsA.get(i);
+            java.awt.Point p2 = vertsA.get((i + 1) % vertsA.size());
 
             Vector edge = new Vector(p2.getX() - p1.getX(), p2.getY() - p1.getY());
             Vector axis = new Vector(-edge.getY(), edge.getX());
@@ -79,7 +80,7 @@ public class CollisionDetector {
         return false;
     }
 
-    private static Projection project(ArrayList<Point> vertices, Vector axis) {
+    private static Projection project(List<java.awt.Point> vertices, Vector axis) {
         double min = Double.MAX_VALUE;
         double max = Double.MIN_VALUE;
 
