@@ -60,15 +60,17 @@ public class NetworkController extends MouseAdapter {
             Point pressPoint = e.getPoint();
             Port pressedPort = findPortAtPoint(pressPoint);
 
-            // Start drag only from an unconnected output port
-            if (pressedPort != null && pressedPort.getIoType() == IOType.OUTPUT && !pressedPort.isConnected()) {
-                dragStartPort = pressedPort;
-                view.setFirstPortForWire(dragStartPort); // Set the start port for the view to draw from
-                view.setCurrentMouseForWire(pressPoint); // Set the current mouse position
-                view.setTemporaryWireColor(Color.gray); // Set initial color to gray
-                dragStartPort.setSelectedForConnection(true); // Indicate the port is selected for connection
-                System.out.println("Started drag from output port: " + dragStartPort.getId());
-                view.repaint(); // Repaint to show the selected port and initial gray wire
+            // Start drag from an unconnected output OR an unconnected input port
+            if (pressedPort != null && !pressedPort.isConnected()) {
+                if (pressedPort.getIoType() == IOType.OUTPUT || pressedPort.getIoType() == IOType.INPUT) {
+                    dragStartPort = pressedPort;
+                    view.setFirstPortForWire(dragStartPort); // Set the start port for the view to draw from
+                    view.setCurrentMouseForWire(pressPoint); // Set the current mouse position
+                    view.setTemporaryWireColor(Color.gray); // Set initial color to gray
+                    dragStartPort.setSelectedForConnection(true); // Indicate the port is selected for connection
+                    System.out.println("Started drag from " + dragStartPort.getIoType() + " port: " + dragStartPort.getId());
+                    view.repaint(); // Repaint to show the selected port and initial gray wire
+                }
             } else {
                 // If we press on a port that is not a valid start, or on empty space,
                 // and a drag was previously started, cancel it.
@@ -95,11 +97,11 @@ public class NetworkController extends MouseAdapter {
 
             Color colorToSet;
             if (hoveredPort != null) {
-                // Check if it's a valid connection target (input port)
-                if (hoveredPort.getIoType() == IOType.INPUT && isValidConnection(dragStartPort, hoveredPort)) {
-                    colorToSet = Color.green; // Valid connection target is an input port
+                // Check if it's a valid connection target based on the drag start port type
+                if (isValidConnection(dragStartPort, hoveredPort)) {
+                    colorToSet = Color.green; // Valid connection target
                 } else {
-                    colorToSet = Color.red; // Invalid port (output, same system, already connected)
+                    colorToSet = Color.red; // Invalid port
                 }
             } else {
                 colorToSet = Color.gray; // Not over a port
@@ -134,21 +136,37 @@ public class NetworkController extends MouseAdapter {
 
             boolean connected = false;
             if (releasePort != null) {
-                // Check if the release port is a valid target (input port)
-                if (releasePort.getIoType() == IOType.INPUT && isValidConnection(dragStartPort, releasePort)) {
+                // Check if the release port is a valid target based on the drag start port type
+                if (isValidConnection(dragStartPort, releasePort)) {
                     Color wireColor;
                     int colorIndex = model.getWires().size() % 3;
                     if (colorIndex == 0) wireColor = new Color(100, 255, 100); // Greenish
                     else if (colorIndex == 1) wireColor = new Color(255, 100, 200); // Pinkish
                     else wireColor = new Color(255, 255, 100); // Yellowish
 
-                    StraightWire newWire = new StraightWire(dragStartPort, releasePort, wireColor);
-                    model.addWire(newWire);
-                    dragStartPort.setConnectedWire(newWire);
-                    releasePort.setConnectedWire(newWire);
+                    // Determine source and destination based on which port was the drag start
+                    Port sourcePort, destPort;
+                    if (dragStartPort.getIoType() == IOType.OUTPUT && releasePort.getIoType() == IOType.INPUT) {
+                        sourcePort = dragStartPort;
+                        destPort = releasePort;
+                    } else if (dragStartPort.getIoType() == IOType.INPUT && releasePort.getIoType() == IOType.OUTPUT) {
+                        sourcePort = releasePort; // Output is the source
+                        destPort = dragStartPort; // Input is the destination
+                    } else {
+                        // Should not happen if isValidConnection passed, but as a fallback
+                        System.out.println("Invalid connection type on release.");
+                        sourcePort = null; destPort = null; // Prevent wire creation
+                    }
 
-                    System.out.println("Wire created between " + dragStartPort.getId() + " and " + releasePort.getId());
-                    connected = true;
+                    if (sourcePort != null && destPort != null) {
+                        StraightWire newWire = new StraightWire(sourcePort, destPort, wireColor);
+                        model.addWire(newWire);
+                        sourcePort.setConnectedWire(newWire);
+                        destPort.setConnectedWire(newWire);
+                        System.out.println("Wire created between " + sourcePort.getId() + " and " + destPort.getId());
+                        connected = true;
+                    }
+
                 } else {
                     System.out.println("Release on invalid port or connection.");
                 }
@@ -157,7 +175,9 @@ public class NetworkController extends MouseAdapter {
             }
 
             // Reset drag state
-            dragStartPort.setSelectedForConnection(false);
+            if (dragStartPort != null) { // Ensure dragStartPort is not null before accessing
+                dragStartPort.setSelectedForConnection(false);
+            }
             view.setFirstPortForWire(null);
             view.setCurrentMouseForWire(null);
             view.setTemporaryWireColor(Color.gray); // Reset temporary wire color in view
@@ -220,18 +240,14 @@ public class NetworkController extends MouseAdapter {
             // System.out.println("Error: One or both ports already connected."); // Keep console logs for debugging
             return false; // One or both ports already have a wire
         }
-        // For drag and drop from output to input, ensure the types match the intended flow
-        // port1 is the drag start port (must be OUTPUT based on mousePressed logic)
-        // port2 is the potential release/hover port
-        if (port1.getIoType() == IOType.OUTPUT && port2.getIoType() == IOType.INPUT) {
+
+        // Allow connection if dragging from Output to Input OR from Input to Output
+        if ((port1.getIoType() == IOType.OUTPUT && port2.getIoType() == IOType.INPUT) ||
+                (port1.getIoType() == IOType.INPUT && port2.getIoType() == IOType.OUTPUT)) {
             return true;
         }
-        // If dragging from input to output was also desired, the logic would be:
-        // if (port1.getIoType() == Port.IOType.INPUT && port2.getIoType() == Port.IOType.OUTPUT) {
-        //      return true;
-        // }
-        // Based on the request ("mousepressed on the output port and then mouserelease on the input port"),
-        // we only allow output to input connections initiated by dragging from output.
-        return false;
+
+        // System.out.println("Error: Invalid port type combination for connection."); // Keep console logs for debugging
+        return false; // Invalid combination (e.g., Output to Output, Input to Input)
     }
 }
