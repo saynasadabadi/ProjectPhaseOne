@@ -1,6 +1,6 @@
 package view;
 
-import model.*;
+import model.*; // Assuming GameModel is in model package
 
 import javax.swing.*;
 import java.awt.*;
@@ -8,21 +8,22 @@ import java.awt.geom.RoundRectangle2D;
 import java.util.List;
 
 public class NetworkPanel extends JPanel {
-    private NetworkModel networkModel;
+    private GameModel gameModel; // Changed from NetworkModel to GameModel
     private transient Port firstPortForWire = null;
     private transient Point currentMouseForWire = null;
-    private transient Color temporaryWireColor = Color.gray; // Added field for temporary wire color
+    private transient Color temporaryWireColor = Color.gray;
 
-    public NetworkPanel(NetworkModel model) {
-        this.networkModel = model;
+    public NetworkPanel(GameModel model) { // Constructor now takes GameModel
+        this.gameModel = model;
         this.setBackground(new Color(20, 25, 30));
     }
 
-    public void setNetworkModel(NetworkModel model) {
-        this.networkModel = model;
+    public void setGameModel(GameModel model) { // Renamed setter
+        this.gameModel = model;
         repaint();
     }
 
+    // Keep other getters and setters as they are (firstPortForWire, etc.)
     public void setFirstPortForWire(Port port) {
         this.firstPortForWire = port;
         if (port != null) {
@@ -37,15 +38,14 @@ public class NetworkPanel extends JPanel {
 
     public void setCurrentMouseForWire(Point mousePoint) {
         this.currentMouseForWire = mousePoint;
-        // Repaint is called by setTemporaryWireColor or when drag ends
         // repaint(); // Repaint moved to setTemporaryWireColor for efficiency
     }
 
-    // Added setter for the temporary wire color
     public void setTemporaryWireColor(Color color) {
         this.temporaryWireColor = color;
-        repaint(); // Repaint whenever the color or mouse position changes
+        repaint();
     }
+
 
     @Override
     protected void paintComponent(Graphics g) {
@@ -55,10 +55,13 @@ public class NetworkPanel extends JPanel {
 
         drawGrid(g2d);
 
-        if (networkModel == null) {
+        // Access NetworkModel through GameModel
+        if (gameModel == null || gameModel.getNetworkModel() == null) {
             g2d.dispose();
             return;
         }
+
+        NetworkModel networkModel = gameModel.getNetworkModel(); // Get the underlying NetworkModel
 
         for (NetworkSystem system : networkModel.getSystems()) {
             drawNetworkSystem(g2d, system);
@@ -69,7 +72,6 @@ public class NetworkPanel extends JPanel {
         }
 
         if (firstPortForWire != null && currentMouseForWire != null) {
-            // Pass the temporary wire color to the drawing method
             drawTemporaryWire(g2d, firstPortForWire.getAbsolutePosition(), currentMouseForWire, temporaryWireColor);
         }
 
@@ -99,65 +101,47 @@ public class NetworkPanel extends JPanel {
         int indH = system.getIndicatorHeight();
         float arc = 20.0f;
 
-        // --- System Body and Indicator Drawing Logic ---
         Color bodyFillColor;
         Color bodyBorderColor;
         Color indicatorFillColor;
         Color indicatorBorderColor;
 
-        // Check if the system is a SourceNetworkSystem
         if (system instanceof SourceNetworkSystem) {
-            // Different drawing for SourceNetworkSystem (e.g., a different color scheme)
-            bodyFillColor = new Color(70, 90, 70); // Greenish hue
+            bodyFillColor = new Color(70, 90, 70);
             bodyBorderColor = new Color(50, 70, 50);
 
             if (system.getIndicatorState() == IndicatorState.ON) {
-                indicatorFillColor = new Color(180, 255, 180); // Light green when ON
+                indicatorFillColor = new Color(180, 255, 180);
                 indicatorBorderColor = new Color(140, 200, 140);
             } else {
-                indicatorFillColor = system.getIndicatorState().getColor(); // Use default state color when OFF
+                indicatorFillColor = system.getIndicatorState().getColor();
                 indicatorBorderColor = system.getIndicatorState().getColor().darker();
             }
-
-            // Optionally, draw something extra for a source system, like a small icon or label
-            // g2d.setColor(Color.WHITE);
-            // g2d.drawString("SOURCE", sysPos.x + 10, sysPos.y + indH + bodyH / 2);
-
-
         } else {
-            // Existing drawing for regular NetworkSystem
             bodyFillColor = new Color(80, 85, 90);
             bodyBorderColor = new Color(60, 65, 70);
 
             if (system.getIndicatorState() == IndicatorState.ON) {
-                // Draw whitish when ON
-                indicatorFillColor = new Color(220, 220, 220); // A light gray/whitish color
-                indicatorBorderColor = new Color(180, 180, 180); // A slightly darker shade for the border
+                indicatorFillColor = new Color(220, 220, 220);
+                indicatorBorderColor = new Color(180, 180, 180);
             } else {
-                // Use the state's default color when OFF
                 indicatorFillColor = system.getIndicatorState().getColor();
                 indicatorBorderColor = system.getIndicatorState().getColor().darker();
             }
         }
 
-        // Draw the body of the system
         g2d.setColor(bodyFillColor);
         g2d.fill(new RoundRectangle2D.Float(sysPos.x, sysPos.y + indH, width, bodyH, arc, arc));
         g2d.setColor(bodyBorderColor);
         g2d.draw(new RoundRectangle2D.Float(sysPos.x, sysPos.y + indH, width, bodyH, arc, arc));
 
-        // Draw the indicator part
         g2d.setColor(indicatorFillColor);
         g2d.fill(new RoundRectangle2D.Float(sysPos.x, sysPos.y, width, indH, arc / 1.5f, arc / 1.5f));
         g2d.setColor(indicatorBorderColor);
         g2d.draw(new RoundRectangle2D.Float(sysPos.x, sysPos.y, width, indH, arc / 1.5f, arc / 1.5f));
 
-        // --- End System Body and Indicator Drawing Logic ---
-
-
-        // Draw the ports
         for (Port port : system.getAllPorts()) {
-            drawPort(g2d, port); // Assuming drawPort method exists elsewhere
+            drawPort(g2d, port);
         }
     }
 
@@ -189,7 +173,7 @@ public class NetworkPanel extends JPanel {
                 g2d.drawOval(absPortPos.x - s/2, absPortPos.y - s/2, s,s);
                 g2d.setStroke(new BasicStroke(1));
             }
-            return; // Exit after drawing the circle and its potential selection indicator
+            return;
         }
         g2d.fillPolygon(portPolygon);
         g2d.setColor(shapeType.getColor().darker());
@@ -219,9 +203,8 @@ public class NetworkPanel extends JPanel {
         g2d.setStroke(new BasicStroke(1f));
     }
 
-    // Modified drawTemporaryWire to accept a color argument
     private void drawTemporaryWire(Graphics2D g2d, Point start, Point end, Color color) {
-        g2d.setColor(color); // Use the provided color
+        g2d.setColor(color);
         g2d.setStroke(new BasicStroke(2f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER,
                 10.0f, new float[]{6.0f, 4.0f}, 0.0f));
         g2d.drawLine(start.x, start.y, end.x, end.y);
