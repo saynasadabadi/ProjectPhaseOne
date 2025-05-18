@@ -61,30 +61,4 @@ public class NetworkModel {
             }
         }
     }
-
-    public void removeSystem(NetworkSystem system) {
-        if (system != null) {
-            List<Wire> wiresToRemove = new ArrayList<>();
-            for (Wire w : this.wires) {
-                for (Port p : w.getPorts()) {
-                    if (p.getNetworkSystem() == system) {
-                        wiresToRemove.add(w);
-                        break;
-                    }
-                }
-            }
-            for (Wire wtr : wiresToRemove) {
-                removeWire(wtr);
-            }
-
-            List<Packet> packetsToRemove = new ArrayList<>();
-            for(Packet p : this.packets){
-                if(p.getNetworkSystem() == system || (p.getWire() != null && wiresToRemove.contains(p.getWire()))){
-                    packetsToRemove.add(p);
-                }
-            }
-            this.packets.removeAll(packetsToRemove);
-            this.systems.remove(system);
-        }
-    }
 }
