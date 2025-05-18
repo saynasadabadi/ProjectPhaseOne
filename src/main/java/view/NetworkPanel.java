@@ -11,6 +11,7 @@ public class NetworkPanel extends JPanel {
     private NetworkModel networkModel;
     private transient Port firstPortForWire = null;
     private transient Point currentMouseForWire = null;
+    private transient Color temporaryWireColor = Color.gray; // Added field for temporary wire color
 
     public NetworkPanel(NetworkModel model) {
         this.networkModel = model;
@@ -36,7 +37,14 @@ public class NetworkPanel extends JPanel {
 
     public void setCurrentMouseForWire(Point mousePoint) {
         this.currentMouseForWire = mousePoint;
-        repaint();
+        // Repaint is called by setTemporaryWireColor or when drag ends
+        // repaint(); // Repaint moved to setTemporaryWireColor for efficiency
+    }
+
+    // Added setter for the temporary wire color
+    public void setTemporaryWireColor(Color color) {
+        this.temporaryWireColor = color;
+        repaint(); // Repaint whenever the color or mouse position changes
     }
 
     @Override
@@ -61,7 +69,8 @@ public class NetworkPanel extends JPanel {
         }
 
         if (firstPortForWire != null && currentMouseForWire != null) {
-            drawTemporaryWire(g2d, firstPortForWire.getAbsolutePosition(), currentMouseForWire);
+            // Pass the temporary wire color to the drawing method
+            drawTemporaryWire(g2d, firstPortForWire.getAbsolutePosition(), currentMouseForWire, temporaryWireColor);
         }
 
 
@@ -175,8 +184,9 @@ public class NetworkPanel extends JPanel {
         g2d.setStroke(new BasicStroke(1f));
     }
 
-    private void drawTemporaryWire(Graphics2D g2d, Point start, Point end) {
-        g2d.setColor(Color.WHITE);
+    // Modified drawTemporaryWire to accept a color argument
+    private void drawTemporaryWire(Graphics2D g2d, Point start, Point end, Color color) {
+        g2d.setColor(color); // Use the provided color
         g2d.setStroke(new BasicStroke(2f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER,
                 10.0f, new float[]{6.0f, 4.0f}, 0.0f));
         g2d.drawLine(start.x, start.y, end.x, end.y);
