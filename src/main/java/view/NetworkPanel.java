@@ -99,31 +99,60 @@ public class NetworkPanel extends JPanel {
         int indH = system.getIndicatorHeight();
         float arc = 20.0f;
 
-        // Draw the body of the system
-        g2d.setColor(new Color(80, 85, 90));
-        g2d.fill(new RoundRectangle2D.Float(sysPos.x, sysPos.y + indH, width, bodyH, arc, arc));
-        g2d.setColor(new Color(60,65,70));
-        g2d.draw(new RoundRectangle2D.Float(sysPos.x, sysPos.y + indH, width, bodyH, arc, arc));
-
-        // --- Indicator Drawing Logic ---
+        // --- System Body and Indicator Drawing Logic ---
+        Color bodyFillColor;
+        Color bodyBorderColor;
         Color indicatorFillColor;
         Color indicatorBorderColor;
 
-        if (system.getIndicatorState() == IndicatorState.ON) {
-            // Draw whitish when ON
-            indicatorFillColor = new Color(220, 220, 220); // A light gray/whitish color
-            indicatorBorderColor = new Color(180, 180, 180); // A slightly darker shade for the border
+        // Check if the system is a SourceNetworkSystem
+        if (system instanceof SourceNetworkSystem) {
+            // Different drawing for SourceNetworkSystem (e.g., a different color scheme)
+            bodyFillColor = new Color(70, 90, 70); // Greenish hue
+            bodyBorderColor = new Color(50, 70, 50);
+
+            if (system.getIndicatorState() == IndicatorState.ON) {
+                indicatorFillColor = new Color(180, 255, 180); // Light green when ON
+                indicatorBorderColor = new Color(140, 200, 140);
+            } else {
+                indicatorFillColor = system.getIndicatorState().getColor(); // Use default state color when OFF
+                indicatorBorderColor = system.getIndicatorState().getColor().darker();
+            }
+
+            // Optionally, draw something extra for a source system, like a small icon or label
+            // g2d.setColor(Color.WHITE);
+            // g2d.drawString("SOURCE", sysPos.x + 10, sysPos.y + indH + bodyH / 2);
+
+
         } else {
-            // Use the state's default color when OFF
-            indicatorFillColor = system.getIndicatorState().getColor();
-            indicatorBorderColor = system.getIndicatorState().getColor().darker();
+            // Existing drawing for regular NetworkSystem
+            bodyFillColor = new Color(80, 85, 90);
+            bodyBorderColor = new Color(60, 65, 70);
+
+            if (system.getIndicatorState() == IndicatorState.ON) {
+                // Draw whitish when ON
+                indicatorFillColor = new Color(220, 220, 220); // A light gray/whitish color
+                indicatorBorderColor = new Color(180, 180, 180); // A slightly darker shade for the border
+            } else {
+                // Use the state's default color when OFF
+                indicatorFillColor = system.getIndicatorState().getColor();
+                indicatorBorderColor = system.getIndicatorState().getColor().darker();
+            }
         }
+
+        // Draw the body of the system
+        g2d.setColor(bodyFillColor);
+        g2d.fill(new RoundRectangle2D.Float(sysPos.x, sysPos.y + indH, width, bodyH, arc, arc));
+        g2d.setColor(bodyBorderColor);
+        g2d.draw(new RoundRectangle2D.Float(sysPos.x, sysPos.y + indH, width, bodyH, arc, arc));
+
         // Draw the indicator part
         g2d.setColor(indicatorFillColor);
         g2d.fill(new RoundRectangle2D.Float(sysPos.x, sysPos.y, width, indH, arc / 1.5f, arc / 1.5f));
         g2d.setColor(indicatorBorderColor);
         g2d.draw(new RoundRectangle2D.Float(sysPos.x, sysPos.y, width, indH, arc / 1.5f, arc / 1.5f));
-        // --- End Indicator Drawing Logic ---
+
+        // --- End System Body and Indicator Drawing Logic ---
 
 
         // Draw the ports
@@ -150,11 +179,17 @@ public class NetworkPanel extends JPanel {
             portPolygon.addPoint(absPortPos.x + s / 2, absPortPos.y);
             portPolygon.addPoint(absPortPos.x, absPortPos.y + s / 2);
             portPolygon.addPoint(absPortPos.x - s / 2, absPortPos.y);
-        } else {
+        } else { // Circle
             g2d.fillOval(absPortPos.x - s/2, absPortPos.y - s/2, s,s);
             g2d.setColor(shapeType.getColor().darker());
             g2d.drawOval(absPortPos.x - s/2, absPortPos.y - s/2, s,s);
-            return;
+            if (port.isSelectedForConnection()) {
+                g2d.setColor(Color.YELLOW);
+                g2d.setStroke(new BasicStroke(2));
+                g2d.drawOval(absPortPos.x - s/2, absPortPos.y - s/2, s,s);
+                g2d.setStroke(new BasicStroke(1));
+            }
+            return; // Exit after drawing the circle and its potential selection indicator
         }
         g2d.fillPolygon(portPolygon);
         g2d.setColor(shapeType.getColor().darker());
