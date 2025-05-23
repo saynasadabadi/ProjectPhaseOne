@@ -12,6 +12,7 @@ public class Port {
     private Point relativePosition;
     private Wire connectedWire;
     private boolean selectedForConnection;
+    private boolean inUse = false; // New attribute: true if a packet is on a wire connected TO this port as an origin
 
     public Port(IOType ioType, PacketAndPortShape shape) {
         this.id = UUID.randomUUID().toString();
@@ -28,12 +29,23 @@ public class Port {
     public Point getRelativePosition() { return relativePosition; }
     public boolean isSelectedForConnection() { return selectedForConnection; }
 
+    // New getter and setter for inUse
+    public boolean isInUse() {
+        return inUse;
+    }
+
+    public void setInUse(boolean inUse) {
+        this.inUse = inUse;
+    }
+
     public Point getAbsolutePosition() {
         if (networkSystem != null && relativePosition != null) {
             return new Point(networkSystem.getPosition().x + relativePosition.x,
                     networkSystem.getPosition().y + relativePosition.y);
         }
-        return new Point(0, 0);
+        // Fallback if no system or relative position (should not happen in normal operation)
+        System.err.println("Port " + id + " getAbsolutePosition: networkSystem or relativePosition is null.");
+        return new Point(0,0); // Or throw an exception
     }
 
     public Rectangle getBounds() {

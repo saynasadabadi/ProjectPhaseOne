@@ -1,19 +1,38 @@
-// FILE: model/StraightWire.java
 package model;
 
 import java.awt.Point;
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 
 public class StraightWire extends Wire {
 
+    private Port inputPort;
+    private Port outputPort;
+    private Color color;
+
+
     public StraightWire(Port port1, Port port2, Color color) {
         super(new ArrayList<>(List.of(port1, port2)), color);
-        if (!((port1.getIoType() == IOType.OUTPUT && port2.getIoType() == IOType.INPUT) ||
-                (port1.getIoType() == IOType.INPUT && port2.getIoType() == IOType.OUTPUT))) {
+        for (Port port : List.of(port1, port2)) {
+            if (port.getIoType() == IOType.OUTPUT) {
+                outputPort = port;
+            }
+            else {
+                inputPort = port;
+            }
+
         }
+    }
+
+    public List<Port> getPorts() {
+        return Arrays.asList(inputPort, outputPort);
+    }
+
+    public Color getColor() {
+        return color;
     }
 
     @Override
