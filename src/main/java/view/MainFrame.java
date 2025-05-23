@@ -46,7 +46,7 @@ public class MainFrame extends JFrame {
                 // Create some initial packets for the new source system
                 ArrayList<Packet> initialPackets = new ArrayList<>();
                 initialPackets.add(new Packet(new Point(0,0), PacketAndPortShape.SQUARE, 8)); // Position will be updated
-                initialPackets.add(new Packet(new Point(0,0), PacketAndPortShape.TRIANGLE, 10));
+                initialPackets.add(new Packet(new Point(0,0), PacketAndPortShape.SQUARE, 10));
 
 
                 SourceNetworkSystem newSys = new SourceNetworkSystem(IndicatorState.OFF, newPos, 100, 15, 60, inputs, outputs, initialPackets);
@@ -60,8 +60,8 @@ public class MainFrame extends JFrame {
             if (currentNetworkModel != null) {
                 Point newPos = new Point(70 + (currentNetworkModel.getSystems().size() % 6) * 150,
                         70 + (currentNetworkModel.getSystems().size() / 6) * 150);
-                ArrayList<Port> inputs = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.TRIANGLE)));
-                ArrayList<Port> outputs = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.TRIANGLE)));
+                ArrayList<Port> inputs = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.SQUARE)));
+                ArrayList<Port> outputs = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE)));
                 NonSourceNetworkSystem newSys = new NonSourceNetworkSystem(IndicatorState.OFF, newPos, 100, 15, 60, inputs, outputs, 5);
                 controller.addNetworkSystem(newSys);
             }
@@ -128,9 +128,10 @@ public class MainFrame extends JFrame {
         model.addSystem(sys1);
 
 
-        ArrayList<Port> s2InPorts = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.TRIANGLE)));
+        ArrayList<Port> s2InPorts = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.SQUARE
+        )));
         ArrayList<Port> s2OutPorts = new ArrayList<>(List.of(
-                new Port(IOType.OUTPUT, PacketAndPortShape.TRIANGLE)
+                new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE)
         ));
         NonSourceNetworkSystem sys2 = new NonSourceNetworkSystem(
                 IndicatorState.OFF, new Point(350, 100), 110, 18, 70, // Adjusted position for clarity
