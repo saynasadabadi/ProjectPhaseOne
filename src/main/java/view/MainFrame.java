@@ -5,6 +5,8 @@ import model.*; // Assuming GameModel is in model package
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.font.FontRenderContext;
+import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.List; // Required for List
 
@@ -14,6 +16,7 @@ public class MainFrame extends JFrame {
     private JLabel statsLabel; // For displaying delivered/lost packets
     private JProgressBar wireUsageBar; // For displaying wire usage
     private JLabel wireLimitLabel; // For displaying wire limit info
+    private JLabel coinsLabel; // Label for displaying coins
 
     public MainFrame() {
         this.gameModel = new GameModel();
@@ -82,44 +85,53 @@ public class MainFrame extends JFrame {
             updateStatsDisplay(); // Update stats immediately on start/stop
         });
 
-        // Initialize UI components
-        statsLabel = new JLabel("Delivered: 0 | Lost: 0");
-        statsLabel.setHorizontalAlignment(SwingConstants.CENTER);
-
-        // Wire usage components
+        // Initialize UI components for HUD
+        statsLabel = new JLabel("Packets: D 0 | L 0 | A 0", SwingConstants.CENTER);
+        coinsLabel = new JLabel("Coins: 0", SwingConstants.CENTER); // Initialize coins label
         wireUsageBar = new JProgressBar(0, 100);
         wireUsageBar.setStringPainted(true);
         wireUsageBar.setString("Wire Usage: 0%");
-        wireUsageBar.setForeground(new Color(100, 255, 100)); // Green by default
-        
-        wireLimitLabel = new JLabel("Limit: 1000");
-        wireLimitLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        wireUsageBar.setForeground(new Color(100, 255, 100));
+        wireLimitLabel = new JLabel("Limit: 1000.0", SwingConstants.LEFT);
 
-        JPanel controlPanel = new JPanel(new BorderLayout());
-        
-        // Top row with buttons
+        // --- Enhanced HUD Panel --- 
+        JPanel hudPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        hudPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5)); // Padding
+
+        // Buttons Panel (top part of HUD)
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
         buttonPanel.add(addSourceSystemButton);
         buttonPanel.add(addNonSourceSystemButton);
         buttonPanel.add(startGameButton);
-        
-        // Bottom row with stats and wire usage
-        JPanel statsPanel = new JPanel(new GridLayout(2, 1, 5, 5));
-        
-        JPanel upperStatsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        upperStatsPanel.add(statsLabel);
-        
-        JPanel wireStatsPanel = new JPanel(new BorderLayout(10, 0));
-        wireStatsPanel.add(wireLimitLabel, BorderLayout.WEST);
-        wireStatsPanel.add(wireUsageBar, BorderLayout.CENTER);
-        
-        statsPanel.add(upperStatsPanel);
-        statsPanel.add(wireStatsPanel);
-        
-        controlPanel.add(buttonPanel, BorderLayout.NORTH);
-        controlPanel.add(statsPanel, BorderLayout.SOUTH);
 
-        add(controlPanel, BorderLayout.SOUTH);
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 3; gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        hudPanel.add(buttonPanel, gbc);
+
+        // Stats Label
+        gbc.gridy = 1; gbc.gridwidth = 1; gbc.weightx = 0.33; gbc.insets = new Insets(5,0,0,5);
+        gbc.anchor = GridBagConstraints.LINE_START;
+        statsLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        hudPanel.add(statsLabel, gbc);
+
+        // Coins Label
+        gbc.gridx = 1; gbc.weightx = 0.33; gbc.insets = new Insets(5,5,0,5);
+        gbc.anchor = GridBagConstraints.CENTER;
+        coinsLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        hudPanel.add(coinsLabel, gbc);
+        
+        // Wire Limit Label (Part of Wire Usage Display)
+        JPanel wirePanel = new JPanel(new BorderLayout(5,0));
+        wireLimitLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        wirePanel.add(wireLimitLabel, BorderLayout.WEST);
+        wirePanel.add(wireUsageBar, BorderLayout.CENTER);
+
+        gbc.gridx = 2; gbc.weightx = 0.34; gbc.insets = new Insets(5,5,0,0);
+        gbc.anchor = GridBagConstraints.LINE_END;
+        hudPanel.add(wirePanel, gbc);
+        
+        add(hudPanel, BorderLayout.SOUTH);
 
         setPreferredSize(new Dimension(1200, 800)); // Increased size a bit
         pack();
@@ -130,8 +142,9 @@ public class MainFrame extends JFrame {
     private void updateStatsDisplay() {
         if (gameModel != null && gameModel.getNetworkModel() != null && statsLabel != null) {
             NetworkModel nm = gameModel.getNetworkModel();
-            statsLabel.setText("Delivered: " + nm.getDeliveredCount() + " | Lost: " + nm.getLostCount() +
-                    " | Active: " + nm.getPackets().size());
+            statsLabel.setText(String.format("Packets: D %d | L %d | A %d", 
+                                            nm.getDeliveredCount(), nm.getLostCount(), nm.getPackets().size()));
+            coinsLabel.setText("Coins: " + nm.getPlayerCoins()); // Update coins display
             
             if (wireUsageBar != null && wireLimitLabel != null) {
                 double actualCommittedWireLength = nm.getCurrentWireLength();
@@ -163,14 +176,15 @@ public class MainFrame extends JFrame {
                 wireLimitLabel.setText(String.format("Limit: %.0f", wireLengthLimit));
             }
         } else if (statsLabel != null) {
-            statsLabel.setText("Delivered: 0 | Lost: 0 | Active: 0");
+            statsLabel.setText("Packets: D 0 | L 0 | A 0");
+            if (coinsLabel != null) coinsLabel.setText("Coins: 0"); // Reset coins display
             if (wireUsageBar != null) {
                 wireUsageBar.setValue(0);
                 wireUsageBar.setString("Wire Usage: 0%");
                 wireUsageBar.setForeground(new Color(100, 255, 100));
             }
             if (wireLimitLabel != null) {
-                wireLimitLabel.setText("Limit: 1000");
+                wireLimitLabel.setText("Limit: 1000.0");
             }
         }
     }

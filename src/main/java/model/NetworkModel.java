@@ -11,6 +11,7 @@ public class NetworkModel {
     private List<Packet> activePackets; // Packets currently in simulation (on wire or in non-source storage ready to move)
     private List<Packet> deliveredPackets;
     private List<Packet> lostPackets;
+    private int playerCoins; // To store player's coins
     
     // Wire length limit system
     private double wireLengthLimit;
@@ -22,6 +23,7 @@ public class NetworkModel {
         this.activePackets = new CopyOnWriteArrayList<>(); // For thread-safe operations during game loop
         this.deliveredPackets = new ArrayList<>();
         this.lostPackets = new ArrayList<>();
+        this.playerCoins = 0; // Initialize coins to 0
         this.wireLengthLimit = 1000.0; // Default wire length limit
         this.currentWireLength = 0.0;
     }
@@ -73,6 +75,7 @@ public class NetworkModel {
     public List<Packet> getLostPackets() { return new ArrayList<>(lostPackets); }
     public int getDeliveredCount() { return deliveredPackets.size(); }
     public int getLostCount() { return lostPackets.size(); }
+    public int getPlayerCoins() { return playerCoins; } // Getter for playerCoins
 
     // Wire length limit methods
     public double getWireLengthLimit() { return wireLengthLimit; }
@@ -92,18 +95,27 @@ public class NetworkModel {
     }
 
     public void addDeliveredPacket(Packet packet) {
-        if (activePackets.remove(packet)) {
-            deliveredPackets.add(packet);
-            // System.out.println("Packet " + packet.getId() + " officially DELIVERED. Total delivered: " + deliveredPackets.size());
-        } else if (systems.stream().anyMatch(s -> s instanceof SourceNetworkSystem && ((SourceNetworkSystem)s).getSenderStorage().contains(packet))) {
-            // If packet was in a source system's storage and got delivered (e.g. loopback to same source)
-            systems.forEach(s -> {
-                if (s instanceof SourceNetworkSystem) {
-                    ((SourceNetworkSystem)s).getSenderStorage().remove(packet);
+        boolean removedFromActive = activePackets.remove(packet);
+        boolean removedFromSourceStorage = false;
+
+        if (!removedFromActive) {
+            for (NetworkSystem s : systems) {
+                if (s instanceof SourceNetworkSystem && ((SourceNetworkSystem)s).getSenderStorage().remove(packet)) {
+                    removedFromSourceStorage = true;
+                    break;
                 }
-            });
+            }
+        }
+
+        if (removedFromActive || removedFromSourceStorage) {
             deliveredPackets.add(packet);
-            // System.out.println("Packet " + packet.getId() + " from source storage DELIVERED. Total delivered: " + deliveredPackets.size());
+            // Award coins based on packet shape
+            if (packet.getShape() != null) {
+                this.playerCoins += packet.getShape().getCoinValue();
+            }
+            // System.out.println("Packet " + packet.getId() + " DELIVERED. Coins: " + playerCoins);
+        } else {
+            // System.out.println("Packet " + packet.getId() + " was already processed or not found for delivery.");
         }
     }
 
@@ -156,6 +168,7 @@ public class NetworkModel {
         activePackets.clear();
         deliveredPackets.clear();
         lostPackets.clear();
+        playerCoins = 0; // Reset coins on simulation reset
 
         for(NetworkSystem ns : systems) {
             ns.lastPacketReleaseTimeMillis = 0;
