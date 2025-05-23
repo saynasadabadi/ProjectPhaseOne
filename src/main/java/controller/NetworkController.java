@@ -37,6 +37,7 @@ public class NetworkController extends MouseAdapter {
             view.setCurrentMouseForWire(null);
             view.setTemporaryWireColor(Color.gray);
             dragStartPort = null;
+            gameModel.setTemporaryWireLength(0.0); // Reset temporary wire length
             System.out.println("Clicked empty space, deselected drag.");
             view.repaint();
         } else {
@@ -67,6 +68,10 @@ public class NetworkController extends MouseAdapter {
 
     @Override
     public void mousePressed(MouseEvent e) {
+        if (gameModel.isGameRunning()) {
+            System.out.println("Cannot modify wires: Game is running.");
+            return; // Prevent wire interaction if game is running
+        }
         if (e.getButton() == MouseEvent.BUTTON1) {
             Point pressPoint = e.getPoint();
             Port pressedPort = findPortAtPoint(pressPoint);
@@ -103,9 +108,20 @@ public class NetworkController extends MouseAdapter {
             view.setCurrentMouseForWire(e.getPoint());
             Point currentMousePoint = e.getPoint();
             Port hoveredPort = findPortAtPoint(currentMousePoint);
+            
+            Point startPos = dragStartPort.getAbsolutePosition();
+            double tempWireLength = NetworkModel.calculateWireLength(startPos, currentMousePoint);
+            // This will call updateStatsCallback in GameModel for real-time dragging update
+            gameModel.setTemporaryWireLength(tempWireLength); 
+            
+            NetworkModel networkModel = gameModel.getNetworkModel();
+            boolean canAddWire = networkModel != null && networkModel.canAddWire(tempWireLength);
 
             Color colorToSet;
-            if (hoveredPort != null) {
+            if (!canAddWire) {
+                // If wire length limit exceeded, always show red
+                colorToSet = Color.red;
+            } else if (hoveredPort != null) {
                 if (isValidConnection(dragStartPort, hoveredPort)) {
                     colorToSet = Color.green;
                 } else {
@@ -121,33 +137,52 @@ public class NetworkController extends MouseAdapter {
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        NetworkModel currentNetworkModel = gameModel.getNetworkModel(); // Get current NetworkModel instance
+        if (gameModel.isGameRunning()) {
+            // Although mousePressed should prevent starting a drag, 
+            // this is an extra check for safety or other event sequences.
+            System.out.println("Cannot modify wires: Game is running.");
+            // Ensure any drag state is reset if somehow active
+            if (dragStartPort != null) {
+                dragStartPort.setSelectedForConnection(false);
+                view.setFirstPortForWire(null);
+                view.setCurrentMouseForWire(null);
+                view.setTemporaryWireColor(Color.gray);
+                dragStartPort = null;
+                gameModel.setTemporaryWireLength(0.0); // Reset temp length
+                view.repaint();
+                gameModel.triggerStatsUpdate(); // Update stats display
+            }
+            return; 
+        }
+
+        NetworkModel currentNetworkModel = gameModel.getNetworkModel(); 
+        // This call to setTemporaryWireLength will trigger an update via its internal callback.
+        gameModel.setTemporaryWireLength(0.0); 
+
         if (currentNetworkModel == null) {
             System.err.println("NetworkController: NetworkModel is null in mouseReleased. Cannot proceed.");
-            if (dragStartPort != null) { // Still reset drag state if it was active
+            if (dragStartPort != null) { 
                 dragStartPort.setSelectedForConnection(false);
                 view.setFirstPortForWire(null);
                 view.setCurrentMouseForWire(null);
                 view.setTemporaryWireColor(Color.gray);
                 dragStartPort = null;
                 view.repaint();
+                // gameModel.triggerStatsUpdate(); // Covered by setTemporaryWireLength(0.0) above
             }
             return;
         }
-
 
         if (e.isPopupTrigger() || e.getButton() == MouseEvent.BUTTON3) { // Handle right-click for wire deletion
             Point clickPoint = e.getPoint();
             Wire wireToDelete = findWireAtPoint(clickPoint);
 
             if (wireToDelete != null) {
-                currentNetworkModel.removeWire(wireToDelete); // Use currentNetworkModel
+                currentNetworkModel.removeWire(wireToDelete); 
                 System.out.println("Deleted wire.");
                 view.repaint();
-            } else {
-                // System.out.println("Right-clicked, but no wire found."); // Optional: less verbose
-            }
-            // Reset drag state if a drag was in progress and interrupted by right-click
+                gameModel.triggerStatsUpdate(); // Explicitly trigger stats update after wire removal
+            } 
             if (dragStartPort != null) {
                 dragStartPort.setSelectedForConnection(false);
                 view.setFirstPortForWire(null);
@@ -155,6 +190,7 @@ public class NetworkController extends MouseAdapter {
                 view.setTemporaryWireColor(Color.gray);
                 dragStartPort = null;
                 view.repaint();
+                // gameModel.triggerStatsUpdate(); // Covered by setTemporaryWireLength(0.0) at method start
             }
             return;
         }
@@ -162,58 +198,67 @@ public class NetworkController extends MouseAdapter {
         if (dragStartPort != null && e.getButton() == MouseEvent.BUTTON1) { // Handle left-click release for wire creation
             Point releasePoint = e.getPoint();
             Port releasePort = findPortAtPoint(releasePoint);
+            boolean wireActionTaken = false; // Flag to see if a wire was added or an attempt was made that needs UI update
 
-            // boolean connected = false; // Not strictly needed now
             if (releasePort != null) {
                 if (isValidConnection(dragStartPort, releasePort)) {
-                    Color wireColor;
-                    int colorIndex = currentNetworkModel.getWires().size() % 3; // Use currentNetworkModel
-                    if (colorIndex == 0) wireColor = new Color(100, 255, 100); // Greenish
-                    else if (colorIndex == 1) wireColor = new Color(255, 100, 200); // Pinkish
-                    else wireColor = new Color(255, 255, 100); // Yellowish
-
-                    Port sourcePort, destPort;
-                    // Ensure correct assignment of source (OUTPUT) and destination (INPUT)
-                    if (dragStartPort.getIoType() == IOType.OUTPUT && releasePort.getIoType() == IOType.INPUT) {
-                        sourcePort = dragStartPort;
-                        destPort = releasePort;
-                    } else if (dragStartPort.getIoType() == IOType.INPUT && releasePort.getIoType() == IOType.OUTPUT) {
-                        // If drag started from INPUT, and released on OUTPUT, swap them for StraightWire constructor
-                        sourcePort = releasePort;
-                        destPort = dragStartPort;
+                    Point startPos = dragStartPort.getAbsolutePosition();
+                    Point endPos = releasePort.getAbsolutePosition();
+                    double wireLength = NetworkModel.calculateWireLength(startPos, endPos);
+                    
+                    if (!currentNetworkModel.canAddWire(wireLength)) {
+                        System.out.println("Cannot create wire: would exceed wire length limit.");
+                        wireActionTaken = true; // Attempt was made
                     } else {
-                        // This case should not be reached if isValidConnection is correct,
-                        // but as a safeguard:
-                        System.err.println("Error: Invalid IO combination for wire creation despite passing isValidConnection.");
-                        sourcePort = null; destPort = null;
-                    }
+                        Color wireColor;
+                        int colorIndex = currentNetworkModel.getWires().size() % 3; 
+                        if (colorIndex == 0) wireColor = new Color(100, 255, 100); 
+                        else if (colorIndex == 1) wireColor = new Color(255, 100, 200); 
+                        else wireColor = new Color(255, 255, 100); 
 
-                    if (sourcePort != null && destPort != null) {
-                        StraightWire newWire = new StraightWire(sourcePort, destPort, wireColor);
-                        currentNetworkModel.addWire(newWire); // Use currentNetworkModel
-                        // The addWire method in NetworkModel should handle setting ports as connected
-                        // and updating system indicators.
-                        System.out.println("Wire created between " + sourcePort.getId() + " (Output, " + sourcePort.getShape() + ") and " + destPort.getId() + " (Input, " + destPort.getShape() + ")");
-                        // connected = true;
-                    }
+                        Port sourcePort, destPort;
+                        if (dragStartPort.getIoType() == IOType.OUTPUT && releasePort.getIoType() == IOType.INPUT) {
+                            sourcePort = dragStartPort;
+                            destPort = releasePort;
+                        } else if (dragStartPort.getIoType() == IOType.INPUT && releasePort.getIoType() == IOType.OUTPUT) {
+                            sourcePort = releasePort;
+                            destPort = dragStartPort;
+                        } else {
+                            System.err.println("Error: Invalid IO combination for wire creation despite passing isValidConnection.");
+                            sourcePort = null; destPort = null;
+                        }
 
+                        if (sourcePort != null && destPort != null) {
+                            StraightWire newWire = new StraightWire(sourcePort, destPort, wireColor);
+                            currentNetworkModel.addWire(newWire); 
+                            System.out.println("Wire created between " + sourcePort.getId() + " and " + destPort.getId());
+                            wireActionTaken = true; // Wire was added
+                        }
+                    }
                 } else {
-                    System.out.println("Release on invalid port or connection criteria not met (e.g. different shapes, already connected, same system).");
+                    System.out.println("Release on invalid port or connection criteria not met.");
+                    wireActionTaken = true; // Attempt was made (invalidly)
                 }
             } else {
                 System.out.println("Release on empty space, wire not created.");
+                wireActionTaken = true; // Attempt was made (on empty space)
             }
 
-            // Reset drag state regardless of connection success
-            if (dragStartPort != null) { // Check as it could be nullified by right-click interruption
+            if (dragStartPort != null) { 
                 dragStartPort.setSelectedForConnection(false);
             }
             view.setFirstPortForWire(null);
             view.setCurrentMouseForWire(null);
-            view.setTemporaryWireColor(Color.gray); // Reset temporary wire color
+            view.setTemporaryWireColor(Color.gray); 
             dragStartPort = null;
 
-            view.repaint(); // Repaint to show new wire or clear temporary wire
+            view.repaint(); 
+            // After attempting wire creation, or if any interaction occurred that might need stat update
+            // The setTemporaryWireLength(0.0) at the beginning of mouseReleased handles immediate update for drag end.
+            // If a wire was actually added or removed, NetworkModel changes, so trigger an update.
+            if(wireActionTaken){
+                 gameModel.triggerStatsUpdate();
+            }
         }
     }
 
@@ -221,7 +266,6 @@ public class NetworkController extends MouseAdapter {
     public void mouseMoved(MouseEvent e) {
         // No changes needed here for now
     }
-
 
     private Port findPortAtPoint(Point p) {
         if (gameModel == null || gameModel.getNetworkModel() == null) return null;
@@ -252,7 +296,6 @@ public class NetworkController extends MouseAdapter {
         }
         return null;
     }
-
 
     /**
      * Determines if a connection between two ports is valid.

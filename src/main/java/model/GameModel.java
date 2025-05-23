@@ -11,6 +11,7 @@ public class GameModel {
     private boolean gameRunning = false;
     private Runnable repaintCallback; // To trigger repaint on the panel
     private Runnable updateStatsCallback; // To update stats display
+    private double temporaryWireLength = 0.0; // To track the length of the wire being dragged
 
     public static final int TARGET_FPS = 60;
     public static final int GAME_UPDATE_DELAY = 1000 / TARGET_FPS; // Milliseconds
@@ -19,6 +20,7 @@ public class GameModel {
 
     public GameModel() {
         this.networkModel = new NetworkModel();
+        this.temporaryWireLength = 0.0; // Initialize temporary wire length
     }
 
     public NetworkModel getNetworkModel() {
@@ -37,20 +39,41 @@ public class GameModel {
         this.updateStatsCallback = callback;
     }
 
+    // Method to allow external classes (like NetworkController) to request a stats update
+    public void triggerStatsUpdate() {
+        if (this.updateStatsCallback != null) {
+            this.updateStatsCallback.run();
+        }
+    }
+
+    // Getter and Setter for temporaryWireLength
+    public double getTemporaryWireLength() {
+        return temporaryWireLength;
+    }
+
+    public void setTemporaryWireLength(double length) {
+        this.temporaryWireLength = length;
+        // No need to call updateStatsCallback here directly, 
+        // as NetworkController will call triggerStatsUpdate() after this or other model changes.
+        // Let's keep it here for now for real-time dragging update, 
+        // but ensure it's also called after add/remove wire.
+        if (this.updateStatsCallback != null) {
+            this.updateStatsCallback.run(); 
+        }
+    }
+
     public boolean isNetworkModelValidForStart() {
         if (networkModel == null || networkModel.getSystems().isEmpty()) {
             return false;
         }
-        // boolean allSystemsConnected = true; // Original check, can be reinstated if strictness is needed
-        // for (NetworkSystem system : networkModel.getSystems()) {
-        //     if (system.getIndicatorState() != IndicatorState.ON) {
-        //         allSystemsConnected = false;
-        //         break;
-        //     }
-        // }
-        // if (!allSystemsConnected) {
-        //     return false;
-        // }
+        
+        // Check if all system indicators are ON
+        for (NetworkSystem system : networkModel.getSystems()) {
+            if (system.getIndicatorState() != IndicatorState.ON) {
+                System.out.println("Game cannot start: System " + system.getId() + " indicator is OFF.");
+                return false; // Found a system with an OFF indicator
+            }
+        }
 
         boolean hasSourceWithPackets = networkModel.getSystems().stream()
                 .filter(s -> s instanceof SourceNetworkSystem)
@@ -74,9 +97,10 @@ public class GameModel {
         return true; // Lenient: allows starting even if sources are initially empty (they get auto-populated)
     }
 
-    public void startTheGame() {
+    public boolean startTheGame() {
         if (gameRunning) {
-            return;
+            // System.out.println("GameModel: Game is already running.");
+            return false; // Already running, so not a "successful start" in this call
         }
         if (isNetworkModelValidForStart()) {
             networkModel.resetSimulation();
@@ -112,8 +136,11 @@ public class GameModel {
             gameLoopTimer = new Timer(GAME_UPDATE_DELAY, gameUpdateAction);
             gameLoopTimer.setInitialDelay(0);
             gameLoopTimer.start();
+            // System.out.println("GameModel: Game started successfully.");
+            return true; // Game started successfully
         } else {
-            // System.out.println("GameModel: Network is invalid or not ready. Cannot start the game.");
+            System.out.println("GameModel: Network is invalid or not ready. Cannot start the game.");
+            return false; // Game did not start
         }
     }
 

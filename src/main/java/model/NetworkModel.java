@@ -3,6 +3,7 @@ package model;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.awt.Point;
 
 public class NetworkModel {
     private List<NetworkSystem> systems;
@@ -10,6 +11,10 @@ public class NetworkModel {
     private List<Packet> activePackets; // Packets currently in simulation (on wire or in non-source storage ready to move)
     private List<Packet> deliveredPackets;
     private List<Packet> lostPackets;
+    
+    // Wire length limit system
+    private double wireLengthLimit;
+    private double currentWireLength;
 
     public NetworkModel() {
         this.systems = new ArrayList<>();
@@ -17,6 +22,8 @@ public class NetworkModel {
         this.activePackets = new CopyOnWriteArrayList<>(); // For thread-safe operations during game loop
         this.deliveredPackets = new ArrayList<>();
         this.lostPackets = new ArrayList<>();
+        this.wireLengthLimit = 1000.0; // Default wire length limit
+        this.currentWireLength = 0.0;
     }
 
     public void addSystem(NetworkSystem system) {
@@ -28,6 +35,8 @@ public class NetworkModel {
 
     public void addWire(Wire wire) {
         this.wires.add(wire);
+        this.currentWireLength += wire.getLength(); // Track wire length
+        
         // Ensure ports on the wire know about the wire and update system indicators
         Port port1 = wire.getSourcePort(); // Assuming Wire interface has these
         Port port2 = wire.getDestinationPort();
@@ -56,7 +65,6 @@ public class NetworkModel {
     // This method was adding all packets from source storage prematurely
     // public void addPacket(Packet packet) { this.activePackets.add(packet); }
 
-
     public List<NetworkSystem> getSystems() { return new ArrayList<>(systems); }
     public List<Wire> getWires() { return new ArrayList<>(wires); }
     public List<Packet> getPackets() { return activePackets; } // Get active packets for drawing and updates
@@ -66,6 +74,22 @@ public class NetworkModel {
     public int getDeliveredCount() { return deliveredPackets.size(); }
     public int getLostCount() { return lostPackets.size(); }
 
+    // Wire length limit methods
+    public double getWireLengthLimit() { return wireLengthLimit; }
+    public void setWireLengthLimit(double limit) { this.wireLengthLimit = limit; }
+    public double getCurrentWireLength() { return currentWireLength; }
+    public double getRemainingWireLength() { return wireLengthLimit - currentWireLength; }
+    public double getWireUsagePercentage() { return (currentWireLength / wireLengthLimit) * 100.0; }
+    
+    // Check if a wire of given length can be added
+    public boolean canAddWire(double wireLength) {
+        return (currentWireLength + wireLength) <= wireLengthLimit;
+    }
+    
+    // Calculate wire length between two points (for temporary wire validation)
+    public static double calculateWireLength(Point p1, Point p2) {
+        return p1.distance(p2);
+    }
 
     public void addDeliveredPacket(Packet packet) {
         if (activePackets.remove(packet)) {
@@ -98,9 +122,10 @@ public class NetworkModel {
         }
     }
 
-
     public void removeWire(Wire wire) {
         if (wire != null && this.wires.remove(wire)) {
+            this.currentWireLength -= wire.getLength(); // Return wire length to available pool
+            
             Port port1 = wire.getSourcePort();
             Port port2 = wire.getDestinationPort();
 
