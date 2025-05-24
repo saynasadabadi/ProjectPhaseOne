@@ -120,6 +120,12 @@ public class NetworkPanel extends JPanel {
         reDesignButton.setVisible(false); // Initially hidden
         addSourceSystemButton = new JButton("Add Source");
         addNonSourceSystemButton = new JButton("Add Non-Source");
+        
+        // Initially hide time controls since game starts in design mode
+        stepBackButton.setVisible(false);
+        stepForwardButton.setVisible(false);
+        timeSlider.setVisible(false);
+        timeStepLabel.setVisible(false);
 
         // --- Enhanced HUD Panel ---
         JPanel hudPanel = new JPanel(new GridBagLayout());
@@ -225,6 +231,12 @@ public class NetworkPanel extends JPanel {
         stepBackButton.setEnabled(!gameModel.isGameExecuting());
         stepForwardButton.setEnabled(!gameModel.isGameExecuting());
         timeSlider.setEnabled(!gameModel.isGameExecuting());
+        
+        // Show/hide time controls based on game running state
+        stepBackButton.setVisible(gameModel.isGameRunning());
+        stepForwardButton.setVisible(gameModel.isGameRunning());
+        timeSlider.setVisible(gameModel.isGameRunning());
+        timeStepLabel.setVisible(gameModel.isGameRunning());
     }
 
     // --- Drawing methods (Keep these, but they now draw in the CENTER) ---

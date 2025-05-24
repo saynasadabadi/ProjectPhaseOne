@@ -203,7 +203,10 @@ public class GameModel {
      * Steps the simulation forward by one step. Used for manual control.
      */
     public void timeStepForward() {
-        if (gameRunning) stopExecution(); // Stop live run if stepping manually
+        if (gameRunning && !gamePaused) {
+            // Only stop if actively executing, not if paused
+            pauseExecution(); // Switch to pause mode instead of stopping
+        }
         isTimeScrubbing = true;
         if (currentTimeStep < MAX_TIME_STEPS) {
             goToTimeStep(currentTimeStep + 1);
@@ -214,7 +217,10 @@ public class GameModel {
      * Steps the simulation backward by one step. Used for manual control.
      */
     public void timeStepBackward() {
-        if (gameRunning) stopExecution();
+        if (gameRunning && !gamePaused) {
+            // Only stop if actively executing, not if paused
+            pauseExecution(); // Switch to pause mode instead of stopping
+        }
         isTimeScrubbing = true;
         if (currentTimeStep > 0) {
             goToTimeStep(currentTimeStep - 1);
@@ -226,7 +232,10 @@ public class GameModel {
      * @param targetStep The desired time step.
      */
     public void goToTimeStep(int targetStep) {
-        if (gameRunning) stopExecution();
+        if (gameRunning && !gamePaused) {
+            // Only stop if actively executing, not if paused
+            pauseExecution(); // Switch to pause mode instead of stopping
+        }
         isTimeScrubbing = true;
 
         targetStep = Math.max(0, Math.min(MAX_TIME_STEPS, targetStep));
