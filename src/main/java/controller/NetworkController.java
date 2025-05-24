@@ -25,6 +25,10 @@ public class NetworkController extends MouseAdapter implements java.awt.event.Ke
     }
 
     public void addSourceSystemAction() {
+        if (gameModel.isGameRunning()) {
+            System.out.println("Cannot add systems: Game is running.");
+            return;
+        }
         NetworkModel currentNetworkModel = gameModel.getNetworkModel();
         if (currentNetworkModel != null) {
             Point newPos = new Point(50 + (currentNetworkModel.getSystems().size() % 6) * 150,
@@ -40,6 +44,10 @@ public class NetworkController extends MouseAdapter implements java.awt.event.Ke
     }
 
     public void addNonSourceSystemAction() {
+        if (gameModel.isGameRunning()) {
+            System.out.println("Cannot add systems: Game is running.");
+            return;
+        }
         NetworkModel currentNetworkModel = gameModel.getNetworkModel();
         if (currentNetworkModel != null) {
             Point newPos = new Point(70 + (currentNetworkModel.getSystems().size() % 6) * 150,
@@ -59,6 +67,11 @@ public class NetworkController extends MouseAdapter implements java.awt.event.Ke
             gameModel.stopExecution();
         }
         view.updateStatsDisplay(); // Update button text & stats
+    }
+
+    public void reDesignAction() {
+        gameModel.reDesign();
+        view.updateStatsDisplay(); // Update button visibility & stats
     }
 
     public void addNetworkSystem(NetworkSystem system) {
@@ -84,6 +97,10 @@ public class NetworkController extends MouseAdapter implements java.awt.event.Ke
             Wire wireToDelete = findWireAtPoint(clickPoint);
 
             if (wireToDelete != null && e.getButton() == MouseEvent.BUTTON3) { // Right-click deletes
+                if (gameModel.isGameRunning()) {
+                    System.out.println("Cannot delete wires: Game is running.");
+                    return;
+                }
                 gameModel.getNetworkModel().removeWire(wireToDelete);
                 System.out.println("Deleted wire.");
                 view.repaint();
@@ -193,6 +210,11 @@ public class NetworkController extends MouseAdapter implements java.awt.event.Ke
 
     @Override
     public void keyPressed(KeyEvent e) {
+        if (gameModel.isGameRunning()) {
+            // Don't allow manual time control during execution
+            return;
+        }
+        
         int keyCode = e.getKeyCode();
         if (keyCode == KeyEvent.VK_LEFT) {
             gameModel.timeStepBackward();

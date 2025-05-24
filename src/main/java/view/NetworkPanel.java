@@ -28,6 +28,7 @@ public class NetworkPanel extends JPanel {
     private JButton stepBackButton;
     private JButton stepForwardButton;
     private JButton executeButton;
+    private JButton reDesignButton; // New redesign button
     private JLabel timeStepLabel;
     private JButton addSourceSystemButton;
     private JButton addNonSourceSystemButton;
@@ -64,6 +65,10 @@ public class NetworkPanel extends JPanel {
         });
         executeButton.addActionListener(e -> {
             controller.toggleExecutionAction();
+            this.requestFocusInWindow();
+        });
+        reDesignButton.addActionListener(e -> {
+            controller.reDesignAction();
             this.requestFocusInWindow();
         });
         stepBackButton.addActionListener(e -> {
@@ -111,6 +116,8 @@ public class NetworkPanel extends JPanel {
         stepBackButton = new JButton("<");
         stepForwardButton = new JButton(">");
         executeButton = new JButton("Execute");
+        reDesignButton = new JButton("Re-Design");
+        reDesignButton.setVisible(false); // Initially hidden
         addSourceSystemButton = new JButton("Add Source");
         addNonSourceSystemButton = new JButton("Add Non-Source");
 
@@ -148,7 +155,13 @@ public class NetworkPanel extends JPanel {
         coinsLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
         statsPanel.add(coinsLabel, gbcStats);
         gbcStats.gridx = 2; gbcStats.weightx = 0.20; gbcStats.anchor = GridBagConstraints.CENTER;
-        statsPanel.add(executeButton, gbcStats);
+        
+        // Create a panel for execute and redesign buttons
+        JPanel executePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+        executePanel.add(executeButton);
+        executePanel.add(reDesignButton);
+        statsPanel.add(executePanel, gbcStats);
+        
         JPanel wirePanel = new JPanel(new BorderLayout(5,0));
         wireLimitLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
         wirePanel.add(wireLimitLabel, BorderLayout.WEST);
@@ -193,6 +206,18 @@ public class NetworkPanel extends JPanel {
         }
 
         executeButton.setText(gameModel.isGameRunning() ? "Stop" : "Execute");
+        
+        // Control button visibility based on game state
+        reDesignButton.setVisible(gameModel.isGameRunning());
+        
+        // Disable/enable design buttons based on game state
+        addSourceSystemButton.setEnabled(!gameModel.isGameRunning());
+        addNonSourceSystemButton.setEnabled(!gameModel.isGameRunning());
+        
+        // Disable/enable time control during execution
+        stepBackButton.setEnabled(!gameModel.isGameRunning());
+        stepForwardButton.setEnabled(!gameModel.isGameRunning());
+        timeSlider.setEnabled(!gameModel.isGameRunning());
     }
 
     // --- Drawing methods (Keep these, but they now draw in the CENTER) ---

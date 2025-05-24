@@ -14,6 +14,7 @@ public class GameModel {
     private NetworkModel networkModel;
     private Timer gameLoopTimer;
     private boolean gameRunning = false;
+    private boolean gamePaused = false; // New field to track pause state
     private Runnable repaintCallback;
     private Runnable updateStatsCallback;
     private double temporaryWireLength = 0.0;
@@ -158,6 +159,32 @@ public class GameModel {
             if (repaintCallback != null) repaintCallback.run();
             if (updateStatsCallback != null) updateStatsCallback.run();
         }
+    }
+
+    /**
+     * Stops execution and returns to design mode, clearing all snapshots.
+     */
+    public void reDesign() {
+        if (gameRunning) {
+            gameRunning = false;
+            if (gameLoopTimer != null) {
+                gameLoopTimer.stop();
+            }
+        }
+        
+        // Clear all snapshots and reset to design mode
+        history.clear();
+        isTimeScrubbing = false;
+        currentTimeStep = 0;
+        
+        // Reset the network simulation to initial state
+        if (networkModel != null) {
+            networkModel.resetSimulation();
+        }
+        
+        System.out.println("GameModel: Switched to re-design mode. All snapshots cleared.");
+        if (repaintCallback != null) repaintCallback.run();
+        if (updateStatsCallback != null) updateStatsCallback.run();
     }
 
     /**
