@@ -76,6 +76,7 @@ public class NetworkModel {
     public int getDeliveredCount() { return deliveredPackets.size(); }
     public int getLostCount() { return lostPackets.size(); }
     public int getPlayerCoins() { return playerCoins; } // Getter for playerCoins
+    public void setPlayerCoins(int coins) { this.playerCoins = coins; } // Setter for playerCoins
 
     // Wire length limit methods
     public double getWireLengthLimit() { return wireLengthLimit; }

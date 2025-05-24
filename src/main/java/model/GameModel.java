@@ -31,6 +31,10 @@ public class GameModel {
     private Map<Integer, NetworkModelSnapshot> history = new HashMap<>(); // To store snapshots
     // --- End Temporal Progress ---
 
+    // --- Snapshot Execution State ---
+    private boolean isExecutingSnapshots = false; // True when creating all snapshots
+    private boolean snapshotsReady = false; // True when all snapshots are created
+    // --- End Snapshot Execution State ---
 
     public GameModel(double timeLimitSeconds) {
         this.timeLimitSeconds = timeLimitSeconds;
@@ -108,6 +112,14 @@ public class GameModel {
     public double getRemainingTimeSeconds() {
         return timeLimitSeconds - getCurrentTimeSeconds();
     }
+    
+    public boolean isExecutingSnapshots() {
+        return isExecutingSnapshots;
+    }
+    
+    public boolean areSnapshotsReady() {
+        return snapshotsReady;
+    }
     // --- End Getters/Setters ---
 
     public boolean isNetworkModelValidForStart() {
@@ -139,38 +151,114 @@ public class GameModel {
     }
 
     /**
-     * Starts the full, continuous simulation (Execute button).
+     * Starts the full simulation by pre-computing all snapshots (Execute button).
      */
     public boolean startExecution() {
         if (gameRunning) return false;
         if (isNetworkModelValidForStart()) {
-            networkModel.resetSimulation(); // Reset to base state
-            prepareInitialPackets();
+            gameRunning = true;
+            gamePaused = true; // Start in paused state
+            isExecutingSnapshots = true;
+            snapshotsReady = false;
             currentTimeStep = 0;
             history.clear();
-            isTimeScrubbing = false; // We are running live
-            gameRunning = true;
-            lastUpdateTimeNanos = System.nanoTime();
-
-            ActionListener gameUpdateAction = e -> {
-                if (gameRunning && currentTimeStep < maxTimeSteps) {
-                    if (!gamePaused) { // Only update if not paused
-                        updateGameLogic(true); // Run a live step
-                        if (repaintCallback != null) repaintCallback.run();
-                        if (updateStatsCallback != null) updateStatsCallback.run();
-                    }
-                } else {
-                    stopExecution(); // Stop if max steps reached or manually stopped
+            
+            // Show loading state
+            if (repaintCallback != null) repaintCallback.run();
+            if (updateStatsCallback != null) updateStatsCallback.run();
+            
+            // Pre-compute all snapshots in background thread
+            new Thread(() -> {
+                try {
+                    executeAllSnapshots();
+                } catch (Exception e) {
+                    System.err.println("Error during snapshot execution: " + e.getMessage());
+                    e.printStackTrace();
+                    // Reset state on error
+                    isExecutingSnapshots = false;
+                    snapshotsReady = false;
+                    gameRunning = false;
+                    gamePaused = false;
+                    if (repaintCallback != null) repaintCallback.run();
+                    if (updateStatsCallback != null) updateStatsCallback.run();
                 }
-            };
-            gameLoopTimer = new Timer(GAME_UPDATE_DELAY, gameUpdateAction);
-            gameLoopTimer.setInitialDelay(0);
-            gameLoopTimer.start();
+            }).start();
+            
             return true;
         } else {
             System.out.println("GameModel: Network is invalid. Cannot start execution.");
             return false;
         }
+    }
+    
+    /**
+     * Pre-computes all snapshots for the entire simulation.
+     */
+    private void executeAllSnapshots() {
+        System.out.println("Pre-computing " + maxTimeSteps + " snapshots...");
+        
+        // Reset to initial state
+        networkModel.resetSimulation();
+        prepareInitialPackets();
+        
+        // Store initial snapshot (step 0)
+        history.put(0, new NetworkModelSnapshot(networkModel));
+        
+        // Simulate and store each step
+        for (int step = 1; step <= maxTimeSteps; step++) {
+            updateGameLogic(false); // Simulate one step
+            history.put(step, new NetworkModelSnapshot(networkModel));
+            
+            // Update progress occasionally
+            if (step % (maxTimeSteps / 10) == 0) {
+                System.out.println("Snapshot progress: " + step + "/" + maxTimeSteps);
+            }
+        }
+        
+        // Mark snapshots as ready
+        isExecutingSnapshots = false;
+        snapshotsReady = true;
+        currentTimeStep = 0; // Start at beginning
+        
+        // Restore to initial state
+        loadSnapshot(0);
+        
+        System.out.println("All snapshots ready! Total: " + history.size());
+        
+        // Initialize the timer for automatic progression through snapshots
+        initializeSnapshotTimer();
+        
+        // Update UI
+        if (repaintCallback != null) repaintCallback.run();
+        if (updateStatsCallback != null) updateStatsCallback.run();
+    }
+
+    /**
+     * Initializes the timer for automatic progression through snapshots.
+     */
+    private void initializeSnapshotTimer() {
+        if (gameLoopTimer != null) {
+            gameLoopTimer.stop();
+        }
+        
+        gameLoopTimer = new Timer(GAME_UPDATE_DELAY, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (gameRunning && !gamePaused && snapshotsReady) {
+                    // Advance to next snapshot
+                    if (currentTimeStep < maxTimeSteps) {
+                        loadSnapshot(currentTimeStep + 1);
+                        
+                        // Update UI
+                        if (repaintCallback != null) repaintCallback.run();
+                        if (updateStatsCallback != null) updateStatsCallback.run();
+                    } else {
+                        // End of simulation reached, pause automatically
+                        pauseExecution();
+                    }
+                }
+            }
+        });
     }
 
     /**
@@ -208,6 +296,8 @@ public class GameModel {
         isTimeScrubbing = false;
         currentTimeStep = 0;
         gamePaused = false; // Reset pause state
+        snapshotsReady = false; // Reset snapshots ready state
+        isExecutingSnapshots = false; // Reset executing snapshots state
         
         // Reset the network simulation to initial state
         if (networkModel != null) {
@@ -223,11 +313,6 @@ public class GameModel {
      * Steps the simulation forward by one step. Used for manual control.
      */
     public void timeStepForward() {
-        if (gameRunning && !gamePaused) {
-            // Only stop if actively executing, not if paused
-            pauseExecution(); // Switch to pause mode instead of stopping
-        }
-        isTimeScrubbing = true;
         if (currentTimeStep < maxTimeSteps) {
             goToTimeStep(currentTimeStep + 1);
         }
@@ -237,50 +322,50 @@ public class GameModel {
      * Steps the simulation backward by one step. Used for manual control.
      */
     public void timeStepBackward() {
-        if (gameRunning && !gamePaused) {
-            // Only stop if actively executing, not if paused
-            pauseExecution(); // Switch to pause mode instead of stopping
-        }
-        isTimeScrubbing = true;
         if (currentTimeStep > 0) {
             goToTimeStep(currentTimeStep - 1);
         }
     }
 
     /**
-     * Jumps to a specific time step, simulating if necessary.
+     * Jumps to a specific time step using pre-computed snapshots.
      * @param targetStep The desired time step.
      */
     public void goToTimeStep(int targetStep) {
-        if (gameRunning && !gamePaused) {
-            // Only stop if actively executing, not if paused
-            pauseExecution(); // Switch to pause mode instead of stopping
+        if (!snapshotsReady) {
+            System.out.println("Snapshots not ready yet!");
+            return;
+        }
+        
+        // Pause automatic execution for manual navigation
+        boolean wasExecuting = gameRunning && !gamePaused;
+        if (wasExecuting) {
+            pauseExecution();
         }
         isTimeScrubbing = true;
 
         targetStep = Math.max(0, Math.min(maxTimeSteps, targetStep));
-
-        // If we have a snapshot and it's valid, load it.
-        // For now, we always re-simulate for simplicity as requested,
-        // but history tracking could be added here later.
-        // We *must* re-simulate if the network *might* have changed.
-        // Since we allow changes anytime in scrub mode, always re-sim is safest.
-
-        System.out.println("Going to time step: " + targetStep);
-        networkModel.resetSimulation();
-        prepareInitialPackets();
-        history.clear(); // Clear history as we're re-simulating
-
-        for (int i = 0; i < targetStep; i++) {
-            updateGameLogic(false); // Run a simulated step (no delta-time needed)
-        }
-
-        // Ensure the final state is set
-        currentTimeStep = targetStep;
+        
+        // Load the pre-computed snapshot
+        loadSnapshot(targetStep);
+        
+        System.out.println("Loaded snapshot for time step: " + targetStep);
         if (repaintCallback != null) repaintCallback.run();
         if (updateStatsCallback != null) updateStatsCallback.run();
     }
-
+    
+    /**
+     * Loads a specific snapshot and updates the current game state.
+     */
+    private void loadSnapshot(int step) {
+        NetworkModelSnapshot snapshot = history.get(step);
+        if (snapshot != null) {
+            snapshot.restoreToModel(networkModel);
+            currentTimeStep = step;
+        } else {
+            System.err.println("No snapshot found for step: " + step);
+        }
+    }
 
     /**
      * Prepares the initial packets in the source systems.
@@ -390,6 +475,9 @@ public class GameModel {
     public void pauseExecution() {
         if (gameRunning && !gamePaused) {
             gamePaused = true;
+            if (gameLoopTimer != null) {
+                gameLoopTimer.stop();
+            }
             System.out.println("GameModel: Execution paused at step " + currentTimeStep);
             if (repaintCallback != null) repaintCallback.run();
             if (updateStatsCallback != null) updateStatsCallback.run();
@@ -400,8 +488,11 @@ public class GameModel {
      * Resumes the execution from pause.
      */
     public void resumeExecution() {
-        if (gameRunning && gamePaused) {
+        if (gameRunning && gamePaused && snapshotsReady) {
             gamePaused = false;
+            if (gameLoopTimer != null) {
+                gameLoopTimer.start();
+            }
             lastUpdateTimeNanos = System.nanoTime(); // Reset timing to avoid large delta
             System.out.println("GameModel: Execution resumed at step " + currentTimeStep);
             if (repaintCallback != null) repaintCallback.run();
@@ -409,13 +500,111 @@ public class GameModel {
         }
     }
 
-    // --- Inner Class for Snapshots (Optional but recommended for full history) ---
-    // For now, we are re-simulating, so this isn't strictly needed yet.
+    // --- Inner Class for Snapshots ---
     private static class NetworkModelSnapshot {
-        // Store copies of systems, wires, and especially packet states/positions
+        private final List<Packet> activePackets;
+        private final List<Packet> deliveredPackets;
+        private final List<Packet> lostPackets;
+        private final int playerCoins;
+        
+        // Store system states (for source systems: sender storage, for non-source: internal storage)
+        private final Map<String, List<Packet>> systemStorages;
+        private final Map<String, Long> systemLastReleaseTime;
+
         NetworkModelSnapshot(NetworkModel modelToCopy) {
-            // Deep copy logic would go here
+            // Deep copy packet lists
+            this.activePackets = deepCopyPacketList(modelToCopy.getPackets());
+            this.deliveredPackets = deepCopyPacketList(modelToCopy.getDeliveredPackets());
+            this.lostPackets = deepCopyPacketList(modelToCopy.getLostPackets());
+            this.playerCoins = modelToCopy.getPlayerCoins();
+            
+            // Store system-specific states
+            this.systemStorages = new HashMap<>();
+            this.systemLastReleaseTime = new HashMap<>();
+            
+            for (NetworkSystem system : modelToCopy.getSystems()) {
+                if (system instanceof SourceNetworkSystem) {
+                    SourceNetworkSystem source = (SourceNetworkSystem) system;
+                    this.systemStorages.put(system.getId(), deepCopyPacketList(new ArrayList<>(source.getSenderStorage())));
+                } else if (system instanceof NonSourceNetworkSystem) {
+                    NonSourceNetworkSystem nonSource = (NonSourceNetworkSystem) system;
+                    this.systemStorages.put(system.getId(), deepCopyPacketList(new ArrayList<>(nonSource.getStorage())));
+                }
+                this.systemLastReleaseTime.put(system.getId(), system.lastPacketReleaseTimeMillis);
+            }
         }
-        // Method to restore a model to this snapshot
+        
+        private List<Packet> deepCopyPacketList(List<Packet> original) {
+            List<Packet> copy = new ArrayList<>();
+            for (Packet p : original) {
+                copy.add(deepCopyPacket(p));
+            }
+            return copy;
+        }
+        
+        private Packet deepCopyPacket(Packet original) {
+            Packet copy = new Packet(new Point(original.getPosition()), original.getShape(), original.getRadius());
+            copy.setState(original.getState());
+            copy.setCurrentWire(original.getCurrentWire());
+            copy.setTargetPort(original.getTargetPort());
+            copy.setOriginPort(original.getOriginPort());
+            copy.setProgressOnWire(original.getProgressOnWire());
+            copy.setNetworkSystem(original.getNetworkSystem());
+            return copy;
+        }
+        
+        void restoreToModel(NetworkModel model) {
+            // Clear current state
+            model.getPackets().clear();
+            model.getDeliveredPackets().clear();
+            model.getLostPackets().clear();
+            
+            // Restore player coins first
+            model.setPlayerCoins(this.playerCoins);
+            
+            // Restore packet lists
+            for (Packet p : activePackets) {
+                model.addPacketToActiveList(deepCopyPacket(p));
+            }
+            for (Packet p : deliveredPackets) {
+                model.addDeliveredPacket(deepCopyPacket(p));
+            }
+            for (Packet p : lostPackets) {
+                model.addLostPacket(deepCopyPacket(p));
+            }
+            
+            // Restore system states
+            for (NetworkSystem system : model.getSystems()) {
+                if (system instanceof SourceNetworkSystem) {
+                    SourceNetworkSystem source = (SourceNetworkSystem) system;
+                    source.getSenderStorage().clear();
+                    List<Packet> storedPackets = systemStorages.get(system.getId());
+                    if (storedPackets != null) {
+                        for (Packet p : storedPackets) {
+                            source.getSenderStorage().offer(deepCopyPacket(p));
+                        }
+                    }
+                } else if (system instanceof NonSourceNetworkSystem) {
+                    NonSourceNetworkSystem nonSource = (NonSourceNetworkSystem) system;
+                    nonSource.getStorage().clear();
+                    List<Packet> storedPackets = systemStorages.get(system.getId());
+                    if (storedPackets != null) {
+                        for (Packet p : storedPackets) {
+                            nonSource.getStorage().offer(deepCopyPacket(p));
+                        }
+                    }
+                }
+                
+                Long lastReleaseTime = systemLastReleaseTime.get(system.getId());
+                if (lastReleaseTime != null) {
+                    system.lastPacketReleaseTimeMillis = lastReleaseTime;
+                }
+                
+                // Reset port usage states
+                for (Port port : system.getAllPorts()) {
+                    port.setInUse(false);
+                }
+            }
+        }
     }
 }

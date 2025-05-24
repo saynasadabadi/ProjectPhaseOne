@@ -303,6 +303,21 @@ public class NetworkPanel extends JPanel {
             return;
         }
 
+        // Show loading indicator during snapshot execution
+        if (gameModel.isExecutingSnapshots()) {
+            g2d.setColor(Color.YELLOW);
+            g2d.setFont(new Font("SansSerif", Font.BOLD, 24));
+            String loadingText = "Executing the level...";
+            FontMetrics fm = g2d.getFontMetrics();
+            int textWidth = fm.stringWidth(loadingText);
+            int textHeight = fm.getHeight();
+            int x = (getWidth() - textWidth) / 2;
+            int y = (getHeight() - textHeight) / 2 + fm.getAscent();
+            g2d.drawString(loadingText, x, y);
+            g2d.dispose();
+            return;
+        }
+
         NetworkModel networkModel = gameModel.getNetworkModel();
 
         for (NetworkSystem system : networkModel.getSystems()) {
