@@ -205,19 +205,26 @@ public class NetworkPanel extends JPanel {
             timeSlider.setValue(currentStep);
         }
 
-        executeButton.setText(gameModel.isGameRunning() ? "Stop" : "Execute");
+        // Set button text based on game state
+        if (!gameModel.isGameRunning()) {
+            executeButton.setText("Execute");
+        } else if (gameModel.isGamePaused()) {
+            executeButton.setText("Resume");
+        } else {
+            executeButton.setText("Pause");
+        }
         
         // Control button visibility based on game state
         reDesignButton.setVisible(gameModel.isGameRunning());
         
-        // Disable/enable design buttons based on game state
+        // Disable/enable design buttons - disabled whenever game is running (including pause)
         addSourceSystemButton.setEnabled(!gameModel.isGameRunning());
         addNonSourceSystemButton.setEnabled(!gameModel.isGameRunning());
         
-        // Disable/enable time control during execution
-        stepBackButton.setEnabled(!gameModel.isGameRunning());
-        stepForwardButton.setEnabled(!gameModel.isGameRunning());
-        timeSlider.setEnabled(!gameModel.isGameRunning());
+        // Disable/enable time control during execution (allow during pause)
+        stepBackButton.setEnabled(!gameModel.isGameExecuting());
+        stepForwardButton.setEnabled(!gameModel.isGameExecuting());
+        timeSlider.setEnabled(!gameModel.isGameExecuting());
     }
 
     // --- Drawing methods (Keep these, but they now draw in the CENTER) ---

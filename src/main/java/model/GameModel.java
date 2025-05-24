@@ -73,6 +73,14 @@ public class GameModel {
         return gameRunning;
     }
 
+    public boolean isGamePaused() {
+        return gamePaused;
+    }
+
+    public boolean isGameExecuting() {
+        return gameRunning && !gamePaused;
+    }
+
     public int getCurrentTimeStep() {
         return currentTimeStep;
     }
@@ -126,9 +134,11 @@ public class GameModel {
 
             ActionListener gameUpdateAction = e -> {
                 if (gameRunning && currentTimeStep < MAX_TIME_STEPS) {
-                    updateGameLogic(true); // Run a live step
-                    if (repaintCallback != null) repaintCallback.run();
-                    if (updateStatsCallback != null) updateStatsCallback.run();
+                    if (!gamePaused) { // Only update if not paused
+                        updateGameLogic(true); // Run a live step
+                        if (repaintCallback != null) repaintCallback.run();
+                        if (updateStatsCallback != null) updateStatsCallback.run();
+                    }
                 } else {
                     stopExecution(); // Stop if max steps reached or manually stopped
                 }
@@ -149,6 +159,7 @@ public class GameModel {
     public void stopExecution() {
         if (gameRunning) {
             gameRunning = false;
+            gamePaused = false; // Reset pause state when stopping
             if (gameLoopTimer != null) {
                 gameLoopTimer.stop();
             }
@@ -176,6 +187,7 @@ public class GameModel {
         history.clear();
         isTimeScrubbing = false;
         currentTimeStep = 0;
+        gamePaused = false; // Reset pause state
         
         // Reset the network simulation to initial state
         if (networkModel != null) {
@@ -341,6 +353,31 @@ public class GameModel {
 
         // 4. (Optional) Save snapshot if needed (can be heavy)
         // history.put(currentTimeStep, new NetworkModelSnapshot(networkModel));
+    }
+
+    /**
+     * Pauses the execution without stopping the timer.
+     */
+    public void pauseExecution() {
+        if (gameRunning && !gamePaused) {
+            gamePaused = true;
+            System.out.println("GameModel: Execution paused at step " + currentTimeStep);
+            if (repaintCallback != null) repaintCallback.run();
+            if (updateStatsCallback != null) updateStatsCallback.run();
+        }
+    }
+
+    /**
+     * Resumes the execution from pause.
+     */
+    public void resumeExecution() {
+        if (gameRunning && gamePaused) {
+            gamePaused = false;
+            lastUpdateTimeNanos = System.nanoTime(); // Reset timing to avoid large delta
+            System.out.println("GameModel: Execution resumed at step " + currentTimeStep);
+            if (repaintCallback != null) repaintCallback.run();
+            if (updateStatsCallback != null) updateStatsCallback.run();
+        }
     }
 
     // --- Inner Class for Snapshots (Optional but recommended for full history) ---

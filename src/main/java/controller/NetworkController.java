@@ -62,9 +62,14 @@ public class NetworkController extends MouseAdapter implements java.awt.event.Ke
 
     public void toggleExecutionAction() {
         if (!gameModel.isGameRunning()) {
+            // Start execution
             gameModel.startExecution();
+        } else if (gameModel.isGamePaused()) {
+            // Resume execution
+            gameModel.resumeExecution();
         } else {
-            gameModel.stopExecution();
+            // Pause execution
+            gameModel.pauseExecution();
         }
         view.updateStatsDisplay(); // Update button text & stats
     }
@@ -210,7 +215,7 @@ public class NetworkController extends MouseAdapter implements java.awt.event.Ke
 
     @Override
     public void keyPressed(KeyEvent e) {
-        if (gameModel.isGameRunning()) {
+        if (gameModel.isGameExecuting()) {
             // Don't allow manual time control during execution
             return;
         }
