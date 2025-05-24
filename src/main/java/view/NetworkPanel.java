@@ -93,14 +93,16 @@ public class NetworkPanel extends JPanel {
         wireUsageBar.setString("Wire Usage: 0%");
         wireUsageBar.setForeground(new Color(100, 255, 100));
         wireLimitLabel = new JLabel("Limit: 1000.0", SwingConstants.LEFT);
-        timeStepLabel = new JLabel("Time: 0 / " + GameModel.MAX_TIME_STEPS, SwingConstants.CENTER);
+        timeStepLabel = new JLabel("Time: 0.0s / 0.0s", SwingConstants.CENTER);
 
-        timeSlider = new JSlider(0, GameModel.MAX_TIME_STEPS, 0);
+        timeSlider = new JSlider(0, 100, 0); // Will be updated dynamically
         timeSlider.addChangeListener(e -> {
             JSlider source = (JSlider) e.getSource();
             if (source.getValueIsAdjusting()) {
                 isSliderBeingAdjusted = true;
-                timeStepLabel.setText("Time: " + source.getValue() + " / " + GameModel.MAX_TIME_STEPS);
+                // Update display with time during dragging
+                double currentTime = (double) source.getValue() / gameModel.getMaxTimeSteps() * gameModel.getTimeLimitSeconds();
+                timeStepLabel.setText(String.format("Time: %.2fs / %.1fs", currentTime, gameModel.getTimeLimitSeconds()));
             } else {
                 if (isSliderBeingAdjusted) {
                     int newStep = source.getValue();
@@ -206,7 +208,18 @@ public class NetworkPanel extends JPanel {
         wireLimitLabel.setText(String.format("Limit: %.0f", wireLengthLimit));
 
         int currentStep = gameModel.getCurrentTimeStep();
-        timeStepLabel.setText("Time: " + currentStep + " / " + gameModel.getMaxTimeSteps());
+        int maxSteps = gameModel.getMaxTimeSteps();
+        double currentTime = gameModel.getCurrentTimeSeconds();
+        double maxTime = gameModel.getTimeLimitSeconds();
+        
+        // Update slider range if needed
+        if (timeSlider.getMaximum() != maxSteps) {
+            timeSlider.setMaximum(maxSteps);
+        }
+        
+        // Update time display (show time in seconds)
+        timeStepLabel.setText(String.format("Time: %.2fs / %.1fs", currentTime, maxTime));
+        
         if (!isSliderBeingAdjusted && timeSlider.getValue() != currentStep) {
             timeSlider.setValue(currentStep);
         }

@@ -25,15 +25,23 @@ public class GameModel {
 
     // --- Temporal Progress ---
     private int currentTimeStep = 0;
-    public static final int MAX_TIME_STEPS = 500; // Max simulation duration in steps
+    private final double timeLimitSeconds; // Time limit in seconds
+    private final int maxTimeSteps; // Calculated based on time limit and FPS
     private boolean isTimeScrubbing = false; // Flag to indicate if we are manually controlling time
     private Map<Integer, NetworkModelSnapshot> history = new HashMap<>(); // To store snapshots
     // --- End Temporal Progress ---
 
 
-    public GameModel() {
+    public GameModel(double timeLimitSeconds) {
+        this.timeLimitSeconds = timeLimitSeconds;
+        this.maxTimeSteps = (int) Math.ceil(timeLimitSeconds * TARGET_FPS);
         this.networkModel = new NetworkModel();
         this.temporaryWireLength = 0.0;
+    }
+
+    // Backward compatibility constructor (default 10 seconds)
+    public GameModel() {
+        this(10.0); // Default 10 seconds
     }
 
     // ... (Keep existing getters and setters: getNetworkModel, setNetworkModel, etc.) ...
@@ -86,7 +94,19 @@ public class GameModel {
     }
 
     public int getMaxTimeSteps() {
-        return MAX_TIME_STEPS;
+        return maxTimeSteps;
+    }
+    
+    public double getTimeLimitSeconds() {
+        return timeLimitSeconds;
+    }
+    
+    public double getCurrentTimeSeconds() {
+        return (double) currentTimeStep / TARGET_FPS;
+    }
+    
+    public double getRemainingTimeSeconds() {
+        return timeLimitSeconds - getCurrentTimeSeconds();
     }
     // --- End Getters/Setters ---
 
@@ -133,7 +153,7 @@ public class GameModel {
             lastUpdateTimeNanos = System.nanoTime();
 
             ActionListener gameUpdateAction = e -> {
-                if (gameRunning && currentTimeStep < MAX_TIME_STEPS) {
+                if (gameRunning && currentTimeStep < maxTimeSteps) {
                     if (!gamePaused) { // Only update if not paused
                         updateGameLogic(true); // Run a live step
                         if (repaintCallback != null) repaintCallback.run();
@@ -208,7 +228,7 @@ public class GameModel {
             pauseExecution(); // Switch to pause mode instead of stopping
         }
         isTimeScrubbing = true;
-        if (currentTimeStep < MAX_TIME_STEPS) {
+        if (currentTimeStep < maxTimeSteps) {
             goToTimeStep(currentTimeStep + 1);
         }
     }
@@ -238,7 +258,7 @@ public class GameModel {
         }
         isTimeScrubbing = true;
 
-        targetStep = Math.max(0, Math.min(MAX_TIME_STEPS, targetStep));
+        targetStep = Math.max(0, Math.min(maxTimeSteps, targetStep));
 
         // If we have a snapshot and it's valid, load it.
         // For now, we always re-simulate for simplicity as requested,
