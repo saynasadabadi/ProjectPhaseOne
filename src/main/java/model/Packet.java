@@ -31,11 +31,11 @@ public class Packet {
     public static final int DEFAULT_RADIUS = 8; // Default radius if not specified
     public static final double DEFAULT_MAX_NOISE = 100.0; // Default maximum noise threshold
     public static final double COLLISION_NOISE_INCREMENT = 80.0; // Noise added per collision
-    public static final double NOISE_DECAY_RATE = 0.5; // Noise reduction per frame
+    // public static final double NOISE_DECAY_RATE = 0.05; // Noise decay is removed
 
     // Constants for displacement velocity due to impact
-    private static final double DISPLACEMENT_VELOCITY_DECAY = 0.85; // Decay factor per update
-    public static final double MIN_DISPLACEMENT_VELOCITY_MAGNITUDE = 0.1; // Threshold to reset velocity - MADE PUBLIC
+    private static final double DISPLACEMENT_DECAY_RATE = 0.15; // Adjusted from previous 0.85 to be a decay *rate*
+    public static final double MIN_DISPLACEMENT_VELOCITY_MAGNITUDE = 0.01; // Threshold to consider velocity negligible
     private static final double IMPACT_FORCE_TO_VELOCITY_SCALE = 0.05; // Scales incoming force from collision/wave to velocity
     private static final double MAX_DISPLACEMENT_VELOCITY = 3.0; // Max magnitude of displacement velocity component
 
@@ -80,7 +80,7 @@ public class Packet {
      * Reduces noise naturally over time
      */
     public void decayNoise() {
-        this.noise = Math.max(0, this.noise - NOISE_DECAY_RATE);
+        // This method is now empty as noise decay is removed
     }
     
     /**
@@ -142,26 +142,37 @@ public class Packet {
      * using CollisionDetector.isPacketStillOnWire after all movements.
      */
     public void updateMovement() {
-        // Apply displacement from accumulated impact velocity
-        if (this.displacementVelocity.magnitude() > MIN_DISPLACEMENT_VELOCITY_MAGNITUDE) {
-            if (this.position != null) {
-                this.position.setLocation(this.position.getX() + this.displacementVelocity.getX(),
-                                        this.position.getY() + this.displacementVelocity.getY());
+        // 1. Apply and decay displacement velocity
+        if (displacementVelocity.magnitude() > MIN_DISPLACEMENT_VELOCITY_MAGNITUDE) {
+            // Apply displacement to current position
+            if (this.position != null) { // Ensure position is not null before using it
+                this.position.setLocation(this.position.getX() + displacementVelocity.getX(),
+                                          this.position.getY() + displacementVelocity.getY());
             }
-            // Decay the velocity for the next frame
-            this.displacementVelocity = this.displacementVelocity.multiply(DISPLACEMENT_VELOCITY_DECAY);
-        } else if (this.displacementVelocity.magnitude() != 0) { // Avoid creating new vector if already zero
-            // If force is too small, reset it to zero to avoid tiny calculations
-            this.displacementVelocity = new Vector(0,0);
+
+            // Decay displacement velocity (e.g., simple linear decay or exponential)
+            // Assuming DISPLACEMENT_DECAY_RATE is a factor to reduce by (e.g., 0.15 means 15% decay)
+            displacementVelocity = displacementVelocity.multiply(1.0 - DISPLACEMENT_DECAY_RATE);
+            if (displacementVelocity.magnitude() < MIN_DISPLACEMENT_VELOCITY_MAGNITUDE) {
+                displacementVelocity = new Vector(0, 0); // Stop decaying if very small
+            }
+        } else if (displacementVelocity.magnitude() != 0) { // If it was non-zero but became too small
+            displacementVelocity = new Vector(0, 0); // Ensure it's zero if below threshold
         }
-        
-        // Natural noise decay (still relevant for visual feedback or other mechanics)
-        decayNoise();
-        
-        // Check if packet should be lost due to excessive noise (this can still happen independently)
-        if (shouldBeLostDueToNoise() && state != PacketState.LOST && state != PacketState.DELIVERED) {
-            setState(PacketState.LOST);
-            freeOriginPort(); // Free the port when packet is lost due to noise
+
+        // 2. Noise handling (Decay removed)
+        // The 'noise' variable now only increases from collisions/impacts and does not decay.
+        // No code needed here for decay.
+
+        // 3. Check for packet loss due to excessive noise
+        // This check remains: if noise hits maxNoise, packet is lost.
+        if (this.state != PacketState.LOST && this.state != PacketState.DELIVERED && noise >= maxNoise) {
+            System.out.println("Packet " + id + " lost due to exceeding max noise: " + noise + "/" + maxNoise);
+            this.setState(PacketState.LOST);
+            this.setKnockedOffWire(true); // Consider it 'knocked off' if lost by noise
+            if (this.originPort != null) { 
+                this.originPort.setInUse(false);
+            }
         }
     }
     
