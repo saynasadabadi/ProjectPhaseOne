@@ -44,4 +44,46 @@ public class StraightWire extends Wire {
         }
         return 0;
     }
+
+    @Override
+    public double calculateProgress(Point currentPacketPosition) {
+        if (ports.size() != 2 || currentPacketPosition == null) {
+            return 0.0; // Or throw exception, or return -1 to indicate error
+        }
+
+        Port sourcePort = getSourcePort();
+        Port destPort = getDestinationPort();
+
+        if (sourcePort == null || destPort == null) {
+            return 0.0;
+        }
+
+        Point p1 = sourcePort.getAbsolutePosition();
+        Point p2 = destPort.getAbsolutePosition();
+
+        if (p1 == null || p2 == null) {
+            return 0.0;
+        }
+
+        double lineDx = p2.x - p1.x;
+        double lineDy = p2.y - p1.y;
+
+        double totalLengthSquared = lineDx * lineDx + lineDy * lineDy;
+
+        if (totalLengthSquared < 0.0001) { // Wire is essentially a point
+            // If packet is at p1 (source), progress is 0, otherwise 1 (or based on distance to p1)
+            return (currentPacketPosition.equals(p1)) ? 0.0 : 1.0; 
+        }
+
+        // Project packet position onto the line defined by the wire
+        // t = [(packetPos - p1) . (p2 - p1)] / |p2 - p1|^2
+        double t = ((currentPacketPosition.x - p1.x) * lineDx +
+                      (currentPacketPosition.y - p1.y) * lineDy) / totalLengthSquared;
+
+        // Clamp t to be between 0 and 1 for projection onto the segment
+        t = Math.max(0, Math.min(1, t));
+
+        // 't' now represents the progress along the wire (0.0 at p1, 1.0 at p2)
+        return t;
+    }
 }
