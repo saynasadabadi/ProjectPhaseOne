@@ -140,6 +140,7 @@ public class Packet {
             if (impactMagnitude > radius * 2.0) { // Threshold based on packet size
                 setKnockedOffWire(true);
                 setState(PacketState.LOST);
+                freeOriginPort(); // Free the port when packet is knocked off
             }
         }
         
@@ -149,6 +150,17 @@ public class Packet {
         // Check if packet should be lost due to noise
         if (shouldBeLostDueToNoise() && state != PacketState.LOST && state != PacketState.DELIVERED) {
             setState(PacketState.LOST);
+            freeOriginPort(); // Free the port when packet is lost due to noise
+        }
+    }
+    
+    /**
+     * Frees the origin port when this packet is lost
+     */
+    public void freeOriginPort() {
+        if (originPort != null && originPort.isInUse()) {
+            originPort.setInUse(false);
+            System.out.println("Freed origin port " + originPort.getId() + " for lost packet " + getId());
         }
     }
 

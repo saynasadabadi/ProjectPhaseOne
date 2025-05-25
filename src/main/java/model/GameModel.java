@@ -58,7 +58,7 @@ public class GameModel {
 
     // Backward compatibility constructor (default 60 seconds)
     public GameModel() {
-        this(10.0); // Default 60 seconds
+        this(25.0); // Default 60 seconds
     }
 
     // ... (Keep existing getters and setters: getNetworkModel, setNetworkModel, etc.) ...
@@ -181,18 +181,14 @@ public class GameModel {
                 return false;
             }
         }
+        // Check if any source system has packets - but don't add defaults here
+        // Initial packets should be set during system creation in MainFrame
         boolean hasSourceWithPackets = networkModel.getSystems().stream()
                 .filter(s -> s instanceof SourceNetworkSystem)
                 .anyMatch(s -> !((SourceNetworkSystem) s).getSenderStorage().isEmpty());
 
         if (!hasSourceWithPackets) {
-            networkModel.getSystems().stream()
-                    .filter(s -> s instanceof SourceNetworkSystem)
-                    .findFirst()
-                    .ifPresent(s -> {
-                        ((SourceNetworkSystem) s).generateAndStorePacket(PacketAndPortShape.SQUARE, 10);
-                        ((SourceNetworkSystem) s).generateAndStorePacket(PacketAndPortShape.TRIANGLE, 8);
-                    });
+            System.out.println("Warning: No source systems have packets. Make sure to add initial packets in MainFrame.setupInitialModel()");
         }
         return true;
     }
@@ -438,15 +434,18 @@ public class GameModel {
      * Prepares the initial packets in the source systems.
      */
     private void prepareInitialPackets() {
+        // This method now only adds packets if systems have no initial packets
+        // All initial packets should be set during system creation in MainFrame
         for (NetworkSystem ns : networkModel.getSystems()) {
             if (ns instanceof SourceNetworkSystem) {
                 SourceNetworkSystem sns = (SourceNetworkSystem) ns;
-                // Add default packets ONLY if storage is empty.
-                // You might want a more sophisticated level definition later.
+                // Debug: Check current storage state
+                System.out.println("SourceSystem " + sns.getId() + " storage size: " + sns.getSenderStorage().size());
+                
+                // Only add fallback packets if absolutely no packets were provided
                 if (sns.getSenderStorage().isEmpty()) {
+                    System.out.println("Warning: No initial packets provided for SourceSystem " + sns.getId() + ", adding minimal defaults");
                     sns.generateAndStorePacket(PacketAndPortShape.SQUARE, Packet.DEFAULT_RADIUS);
-                    sns.generateAndStorePacket(PacketAndPortShape.TRIANGLE, Packet.DEFAULT_RADIUS);
-                    sns.generateAndStorePacket(PacketAndPortShape.SQUARE, 12);
                 }
             }
         }
@@ -507,6 +506,7 @@ public class GameModel {
             // Handle lost packets due to noise or being knocked off wire
             if (packet.getState() == PacketState.LOST) {
                 if (!networkModel.getLostPackets().contains(packet)) {
+                    packet.freeOriginPort(); // Free the port before adding to lost packets
                     networkModel.addLostPacket(packet);
                 }
                 continue;

@@ -24,7 +24,7 @@ public class NetworkModel {
         this.deliveredPackets = new ArrayList<>();
         this.lostPackets = new ArrayList<>();
         this.playerCoins = 0; // Initialize coins to 0
-        this.wireLengthLimit = 1000.0; // Default wire length limit
+        this.wireLengthLimit = 2000.0; // Default wire length limit
         this.currentWireLength = 0.0;
     }
 
@@ -176,13 +176,12 @@ public class NetworkModel {
             for(Port p : ns.getAllPorts()) {
                 p.setInUse(false);
             }
-            if (ns instanceof SourceNetworkSystem) {
-                ((SourceNetworkSystem) ns).getSenderStorage().clear();
-                // TODO: Potentially re-initialize with default packets if needed
-            } else if (ns instanceof NonSourceNetworkSystem) {
+            // Don't clear source system storage - preserve initial packets
+            // Only clear non-source systems which accumulate packets during simulation
+            if (ns instanceof NonSourceNetworkSystem) {
                 ((NonSourceNetworkSystem) ns).getStorage().clear();
             }
         }
-        //System.out.println("NetworkModel: Simulation reset.");
+        System.out.println("NetworkModel: Simulation reset (preserving initial packets).");
     }
 }

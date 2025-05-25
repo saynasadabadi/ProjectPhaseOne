@@ -21,7 +21,7 @@ public abstract class NetworkSystem {
     public static final int PORT_CLICK_PADDING = 2;
 
     protected long lastPacketReleaseTimeMillis = 0;
-    protected static final long PACKET_RELEASE_COOLDOWN_MILLIS = 250; // 0.25 seconds
+    protected static final long PACKET_RELEASE_COOLDOWN_MILLIS = 1000; // 0.25 seconds
 
     public NetworkSystem(IndicatorState indicatorState, Point position, int width, int indicator_height, int body_height,
                          ArrayList<Port> inputPorts, ArrayList<Port> outputPorts) {
