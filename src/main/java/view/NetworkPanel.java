@@ -314,7 +314,7 @@ public class NetworkPanel extends JPanel {
         Graphics2D g2d = (Graphics2D) g.create();
 
         // --- IMPORTANT: Translate g2d if HUD is present ---
-        // We only want to draw the network in the 'center' area.
+        // We only want to draw the networwk in the 'center' area.
         // However, since we're overriding paintComponent for the whole panel,
         // we'll draw over the HUD unless we are careful.
         // A simpler approach: Let the default paintComponent draw the background.
