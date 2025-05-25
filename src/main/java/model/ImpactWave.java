@@ -15,10 +15,10 @@ public class ImpactWave {
     private boolean active;
     private long creationTime;
     
-    public static final double DEFAULT_MAX_RADIUS = 150.0;
+    public static final double DEFAULT_MAX_RADIUS = 30.0;
     public static final double DEFAULT_EXPANSION_SPEED = 5.0;
     public static final double DEFAULT_STRENGTH = 50.0;
-    public static final long WAVE_LIFETIME_MS = 2000; // 2 seconds
+    public static final long WAVE_LIFETIME_MS = 1000; // 2 seconds
     
     public ImpactWave(Point origin, double strength) {
         this.origin = new Point(origin.x, origin.y);

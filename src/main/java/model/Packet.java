@@ -10,7 +10,7 @@ public class Packet {
     private final String id; // Added for tracking
     Point position;
     double noise; // Now functional - noise level from collisions
-    Vector velocity; // Enhanced for impact wave effects
+    Vector velocity; // Enhanced for impact wave effects - NOTE: This field is still present but not primarily used for impact displacement.
     PacketState state;
     Wire currentWire; // Renamed from 'wire' for clarity, and to match previous logic
     NetworkSystem networkSystem; // System it's currently inside (if IN_NETWORK_SYSTEM)
@@ -23,7 +23,7 @@ public class Packet {
     private double progressOnWire; // 0.0 to 1.0
     
     // New fields for enhanced collision and impact system
-    private Vector impactForce; // Accumulated force from impact waves
+    private Vector displacementVelocity; // Velocity impulse from impacts, decays over time
     private double maxNoise; // Maximum noise before packet is lost
     private boolean knockedOffWire; // Flag if packet was knocked off its wire
 
@@ -32,6 +32,12 @@ public class Packet {
     public static final double DEFAULT_MAX_NOISE = 100.0; // Default maximum noise threshold
     public static final double COLLISION_NOISE_INCREMENT = 80.0; // Noise added per collision
     public static final double NOISE_DECAY_RATE = 0.5; // Noise reduction per frame
+
+    // Constants for displacement velocity due to impact
+    private static final double DISPLACEMENT_VELOCITY_DECAY = 0.85; // Decay factor per update
+    public static final double MIN_DISPLACEMENT_VELOCITY_MAGNITUDE = 0.1; // Threshold to reset velocity - MADE PUBLIC
+    private static final double IMPACT_FORCE_TO_VELOCITY_SCALE = 0.05; // Scales incoming force from collision/wave to velocity
+    private static final double MAX_DISPLACEMENT_VELOCITY = 3.0; // Max magnitude of displacement velocity component
 
     public Packet(Point position, PacketAndPortShape shape, int radius) {
         this.id = UUID.randomUUID().toString();
@@ -42,9 +48,9 @@ public class Packet {
         this.progressOnWire = 0.0;
         this.noise = 0.0; // Start with no noise
         this.maxNoise = DEFAULT_MAX_NOISE;
-        this.impactForce = new Vector(0, 0);
+        this.displacementVelocity = new Vector(0, 0); // Initialize displacement velocity
         this.knockedOffWire = false;
-        this.velocity = new Vector(0, 0); // Initialize velocity
+        this.velocity = new Vector(0, 0); // Initialize base velocity (if used elsewhere)
     }
 
     // Constructor with default radius
@@ -92,22 +98,17 @@ public class Packet {
     // === Impact Force Management ===
     
     /**
-     * Applies an impact force to this packet
+     * Applies an impact force to this packet, contributing to a displacement velocity.
+     * The force comes from a collision or an impact wave.
      */
-    public void applyImpactForce(Vector force) {
-        this.impactForce = new Vector(
-            this.impactForce.getX() + force.getX(),
-            this.impactForce.getY() + force.getY()
-        );
-    }
-    
-    /**
-     * Gets and clears accumulated impact force
-     */
-    public Vector consumeImpactForce() {
-        Vector force = this.impactForce;
-        this.impactForce = new Vector(0, 0);
-        return force;
+    public void applyImpactForce(Vector forceFromCollisionOrWave) {
+        Vector velocityImpulse = forceFromCollisionOrWave.multiply(IMPACT_FORCE_TO_VELOCITY_SCALE);
+        this.displacementVelocity = this.displacementVelocity.add(velocityImpulse);
+
+        // Cap the magnitude of the displacement velocity
+        if (this.displacementVelocity.magnitude() > MAX_DISPLACEMENT_VELOCITY) {
+            this.displacementVelocity = this.displacementVelocity.normalize().multiply(MAX_DISPLACEMENT_VELOCITY);
+        }
     }
     
     /**
@@ -127,28 +128,22 @@ public class Packet {
     // === Movement and Physics ===
     
     /**
-     * Updates packet movement: applies a gentle push from impact forces.
-     * The actual check for being knocked off the wire is now handled in GameModel
+     * Updates packet movement: applies displacement from impact velocity, decays noise.
+     * The actual check for being knocked off the wire is handled in GameModel
      * using CollisionDetector.isPacketStillOnWire after all movements.
      */
     public void updateMovement() {
-        // Apply a gentle push from accumulated impact forces
-        if (state == PacketState.ON_WIRE) { // Only apply push if on wire
-            Vector totalImpact = consumeImpactForce();
-            if (totalImpact.magnitude() > 0.01) { // Only apply if there's a notable force
-                // Scale down the impact for a gentler push.
-                // This factor controls how much the packet is displaced by impact.
-                double pushFactor = 0.05; // Reduced for a very gentle push
-                
-                double dx = totalImpact.getX() * pushFactor;
-                double dy = totalImpact.getY() * pushFactor;
-
-                if (this.position != null) {
-                    this.position.translate((int)Math.round(dx), (int)Math.round(dy));
-                    // No longer setting knockedOffWire or state to LOST here.
-                    // This will be checked in GameModel after regular movement.
-                }
+        // Apply displacement from accumulated impact velocity
+        if (this.displacementVelocity.magnitude() > MIN_DISPLACEMENT_VELOCITY_MAGNITUDE) {
+            if (this.position != null) {
+                this.position.translate((int)Math.round(this.displacementVelocity.getX()),
+                                        (int)Math.round(this.displacementVelocity.getY()));
             }
+            // Decay the velocity for the next frame
+            this.displacementVelocity = this.displacementVelocity.multiply(DISPLACEMENT_VELOCITY_DECAY);
+        } else if (this.displacementVelocity.magnitude() != 0) { // Avoid creating new vector if already zero
+            // If force is too small, reset it to zero to avoid tiny calculations
+            this.displacementVelocity = new Vector(0,0);
         }
         
         // Natural noise decay (still relevant for visual feedback or other mechanics)
@@ -253,6 +248,8 @@ public class Packet {
     
     public Vector getVelocity() { return velocity; }
     public void setVelocity(Vector velocity) { this.velocity = velocity; }
+
+    public Vector getDisplacementVelocity() { return displacementVelocity; } // Getter for displacement velocity
 
     @Override
     public String toString() {
