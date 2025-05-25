@@ -808,7 +808,19 @@ public class GameModel {
                     List<Packet> storedPackets = systemStorages.get(system.getId());
                     if (storedPackets != null) {
                         for (Packet p : storedPackets) {
-                            source.getSenderStorage().offer(deepCopyPacket(p));
+                            Packet freshPacketCopy = deepCopyPacket(p);
+                            freshPacketCopy.setNetworkSystem(source); 
+                            freshPacketCopy.setState(PacketState.IN_NETWORK_SYSTEM);
+                            freshPacketCopy.setPosition(new Point2D.Double(
+                                source.getPosition().x + source.getWidth() / 2.0,
+                                source.getPosition().y + source.getTotalHeight() / 2.0
+                            ));
+                            freshPacketCopy.setCurrentWire(null);
+                            freshPacketCopy.setTargetPort(null);
+                            freshPacketCopy.setOriginPort(null);
+                            freshPacketCopy.setProgressOnWire(0.0);
+                            freshPacketCopy.setKnockedOffWire(false);
+                            source.getSenderStorage().offer(freshPacketCopy);
                         }
                     }
                 } else if (system instanceof NonSourceNetworkSystem) {
