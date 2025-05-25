@@ -1,6 +1,7 @@
 package model;
 
 import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,7 +47,7 @@ public class StraightWire extends Wire {
     }
 
     @Override
-    public double calculateProgress(Point currentPacketPosition) {
+    public double calculateProgress(Point2D.Double currentPacketPosition) {
         if (ports.size() != 2 || currentPacketPosition == null) {
             return 0.0; // Or throw exception, or return -1 to indicate error
         }
@@ -72,13 +73,13 @@ public class StraightWire extends Wire {
 
         if (totalLengthSquared < 0.0001) { // Wire is essentially a point
             // If packet is at p1 (source), progress is 0, otherwise 1 (or based on distance to p1)
-            return (currentPacketPosition.equals(p1)) ? 0.0 : 1.0; 
+            return (Math.abs(currentPacketPosition.getX() - p1.x) < 0.001 && Math.abs(currentPacketPosition.getY() - p1.y) < 0.001) ? 0.0 : 1.0;
         }
 
         // Project packet position onto the line defined by the wire
         // t = [(packetPos - p1) . (p2 - p1)] / |p2 - p1|^2
-        double t = ((currentPacketPosition.x - p1.x) * lineDx +
-                      (currentPacketPosition.y - p1.y) * lineDy) / totalLengthSquared;
+        double t = ((currentPacketPosition.getX() - p1.x) * lineDx +
+                      (currentPacketPosition.getY() - p1.y) * lineDy) / totalLengthSquared;
 
         // Clamp t to be between 0 and 1 for projection onto the segment
         t = Math.max(0, Math.min(1, t));

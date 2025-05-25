@@ -2,6 +2,7 @@ package view;
 
 import controller.NetworkController; // Will need controller for buttons
 import model.*;
+import java.awt.geom.Point2D; // Import Point2D
 
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
@@ -463,10 +464,14 @@ public class NetworkPanel extends JPanel {
     }
     private void drawPacket(Graphics2D g2d, model.Packet packet) {
         if (packet.getPosition() == null || packet.getShape() == null) return;
-        java.util.List<Point> verticesList = packet.getVertices();
+        java.util.List<Point2D.Double> verticesList = packet.getVertices();
         if (verticesList.isEmpty()) return;
+        
         Polygon polygon = new Polygon();
-        for (Point vertex : verticesList) polygon.addPoint(vertex.x, vertex.y);
+        for (Point2D.Double vertex : verticesList) {
+            polygon.addPoint((int)Math.round(vertex.getX()), (int)Math.round(vertex.getY()));
+        }
+        
         g2d.setColor(packet.getColor());
         g2d.fillPolygon(polygon);
         g2d.setColor(packet.getColor().darker().darker());
@@ -478,7 +483,7 @@ public class NetworkPanel extends JPanel {
     private void drawImpactWave(Graphics2D g2d, ImpactWave wave) {
         if (!wave.isActive()) return;
         
-        Point origin = wave.getOrigin();
+        Point2D.Double origin = wave.getOrigin();
         double radius = wave.getCurrentRadius();
         
         // Calculate fade based on wave age and max radius
@@ -494,7 +499,9 @@ public class NetworkPanel extends JPanel {
         // Draw multiple concentric circles for wave effect
         g2d.setStroke(new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         int waveRadius = (int) radius;
-        g2d.drawOval(origin.x - waveRadius, origin.y - waveRadius, waveRadius * 2, waveRadius * 2);
+        g2d.drawOval((int)Math.round(origin.getX()) - waveRadius, 
+                     (int)Math.round(origin.getY()) - waveRadius, 
+                     waveRadius * 2, waveRadius * 2);
         
         // Inner wave with different opacity
         int innerAlpha = (int) (alpha * 0.5);
@@ -502,7 +509,9 @@ public class NetworkPanel extends JPanel {
             Color innerWaveColor = new Color(255, 200, 50, innerAlpha);
             g2d.setColor(innerWaveColor);
             int innerRadius = (int) (radius * 0.7);
-            g2d.drawOval(origin.x - innerRadius, origin.y - innerRadius, innerRadius * 2, innerRadius * 2);
+            g2d.drawOval((int)Math.round(origin.getX()) - innerRadius, 
+                         (int)Math.round(origin.getY()) - innerRadius, 
+                         innerRadius * 2, innerRadius * 2);
         }
         
         g2d.setStroke(new BasicStroke(1f)); // Reset stroke

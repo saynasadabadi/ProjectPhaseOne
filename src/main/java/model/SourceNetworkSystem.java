@@ -1,6 +1,7 @@
 package model;
 
 import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -24,7 +25,8 @@ public class SourceNetworkSystem extends NetworkSystem {
     private void addPacketToSenderStorage(Packet packet){
         packet.setNetworkSystem(this);
         packet.setState(PacketState.IN_NETWORK_SYSTEM);
-        packet.setPosition(new Point(this.position.x + this.width / 2, this.position.y + this.getTotalHeight() / 2));
+        packet.setPosition(new Point2D.Double(this.position.x + this.width / 2.0,
+                                            this.position.y + this.getTotalHeight() / 2.0));
         this.senderStorage.offer(packet);
     }
 
@@ -36,7 +38,7 @@ public class SourceNetworkSystem extends NetworkSystem {
     // Method to programmatically add more packets to be sent later
     public void generateAndStorePacket(PacketAndPortShape shape, int radius) {
         Packet newPacket = new Packet(
-                new Point(this.position.x + this.width / 2, this.position.y + getTotalHeight() / 2),
+                new Point2D.Double(this.position.x + this.width / 2.0, this.position.y + getTotalHeight() / 2.0),
                 shape,
                 radius
         );
@@ -53,7 +55,8 @@ public class SourceNetworkSystem extends NetworkSystem {
         //System.out.println("Packet " + packet.getId() + " DELIVERED to SourceSystem " + getId() + " via port " + inputPort.getId());
         packet.setState(PacketState.DELIVERED);
         packet.setNetworkSystem(this); // Mark as 'in' this system temporarily for state
-        packet.setPosition(new Point(this.position.x + this.width / 2, this.position.y + getTotalHeight() / 2));
+        packet.setPosition(new Point2D.Double(this.position.x + this.width / 2.0, 
+                                            this.position.y + getTotalHeight() / 2.0));
         packet.setCurrentWire(null);
         packet.setTargetPort(null);
         packet.setOriginPort(null);

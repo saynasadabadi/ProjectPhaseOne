@@ -2,6 +2,7 @@ package controller;
 
 import model.*;
 import view.NetworkPanel;
+import java.awt.geom.Point2D; // Import Point2D
 
 import java.awt.Color;
 import java.awt.Point;
@@ -36,7 +37,7 @@ public class NetworkController extends MouseAdapter implements java.awt.event.Ke
             ArrayList<Port> inputs = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.SQUARE)));
             ArrayList<Port> outputs = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE)));
             ArrayList<Packet> initialPackets = new ArrayList<>();
-            initialPackets.add(new Packet(new Point(0,0), PacketAndPortShape.SQUARE, 8));
+            initialPackets.add(new Packet(new Point2D.Double(0,0), PacketAndPortShape.SQUARE, 8));
             SourceNetworkSystem newSys = new SourceNetworkSystem(IndicatorState.OFF, newPos, 100, 15, 60, inputs, outputs, initialPackets);
             addNetworkSystem(newSys); // Use existing method
             view.updateStatsDisplay();

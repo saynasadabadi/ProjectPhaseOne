@@ -1,14 +1,14 @@
 package model;
 
 import java.awt.Color;
-import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID; // For unique ID
 
 public class Packet {
     private final String id; // Added for tracking
-    Point position;
+    Point2D.Double position;
     double noise; // Now functional - noise level from collisions
     Vector velocity; // Enhanced for impact wave effects - NOTE: This field is still present but not primarily used for impact displacement.
     PacketState state;
@@ -39,7 +39,7 @@ public class Packet {
     private static final double IMPACT_FORCE_TO_VELOCITY_SCALE = 0.05; // Scales incoming force from collision/wave to velocity
     private static final double MAX_DISPLACEMENT_VELOCITY = 3.0; // Max magnitude of displacement velocity component
 
-    public Packet(Point position, PacketAndPortShape shape, int radius) {
+    public Packet(Point2D.Double position, PacketAndPortShape shape, int radius) {
         this.id = UUID.randomUUID().toString();
         this.position = position;
         this.shape = shape;
@@ -54,8 +54,17 @@ public class Packet {
     }
 
     // Constructor with default radius
-    public Packet(Point position, PacketAndPortShape shape) {
+    public Packet(Point2D.Double position, PacketAndPortShape shape) {
         this(position, shape, DEFAULT_RADIUS);
+    }
+
+    // New constructor for convenience
+    public Packet(double x, double y, PacketAndPortShape shape, int radius) {
+        this(new Point2D.Double(x, y), shape, radius);
+    }
+
+    public Packet(double x, double y, PacketAndPortShape shape) {
+        this(new Point2D.Double(x,y), shape, DEFAULT_RADIUS);
     }
 
     // === Noise Management Methods ===
@@ -136,8 +145,8 @@ public class Packet {
         // Apply displacement from accumulated impact velocity
         if (this.displacementVelocity.magnitude() > MIN_DISPLACEMENT_VELOCITY_MAGNITUDE) {
             if (this.position != null) {
-                this.position.translate((int)Math.round(this.displacementVelocity.getX()),
-                                        (int)Math.round(this.displacementVelocity.getY()));
+                this.position.setLocation(this.position.getX() + this.displacementVelocity.getX(),
+                                        this.position.getY() + this.displacementVelocity.getY());
             }
             // Decay the velocity for the next frame
             this.displacementVelocity = this.displacementVelocity.multiply(DISPLACEMENT_VELOCITY_DECAY);
@@ -168,16 +177,16 @@ public class Packet {
 
     // === Existing methods with some enhancements ===
 
-    public List<Point> getVertices() {
+    public List<Point2D.Double> getVertices() {
         // Use the provided getVertices logic, ensure shape is not null
         if (shape == null || position == null) {
             return new ArrayList<>(); // Return empty list if no shape or position
         }
         int numberOfSides = shape.getNumberOfSides();
-        Point center = this.position;
+        Point2D.Double center = this.position;
         double currentRadius = this.radius;
 
-        List<Point> vertices = new ArrayList<>(numberOfSides);
+        List<Point2D.Double> vertices = new ArrayList<>(numberOfSides);
         double angleIncrement = 2 * Math.PI / numberOfSides;
         double initialAngle = 0; // Default for circle-like or other polygons
 
@@ -191,16 +200,26 @@ public class Packet {
 
         for (int i = 0; i < numberOfSides; i++) {
             double angle = initialAngle + i * angleIncrement;
-            int x = (int) (center.x + currentRadius * Math.cos(angle));
-            int y = (int) (center.y + currentRadius * Math.sin(angle));
-            vertices.add(new Point(x, y));
+            double x = center.getX() + currentRadius * Math.cos(angle);
+            double y = center.getY() + currentRadius * Math.sin(angle);
+            vertices.add(new Point2D.Double(x, y));
         }
         return vertices;
     }
 
     public String getId() { return id; }
-    public Point getPosition() { return position; }
-    public void setPosition(Point position) { this.position = position; }
+    public Point2D.Double getPosition() { return position; }
+    public void setPosition(Point2D.Double position) { this.position = position; }
+
+    // Convenience setter for position
+    public void setPosition(double x, double y) {
+        if (this.position == null) {
+            this.position = new Point2D.Double(x,y);
+        } else {
+            this.position.setLocation(x,y);
+        }
+    }
+
     public PacketAndPortShape getShape() { return shape; }
     public java.awt.Color getColor() {
         if (shape != null) {
@@ -257,7 +276,7 @@ public class Packet {
                 "id='" + id + '\'' +
                 ", shape=" + shape +
                 ", state=" + state +
-                ", position=" + position +
+                ", position=" + (position != null ? String.format("(%.2f, %.2f)", position.getX(), position.getY()) : "null") +
                 ", noise=" + String.format("%.1f", noise) +
                 ", knockedOff=" + knockedOffWire +
                 '}';

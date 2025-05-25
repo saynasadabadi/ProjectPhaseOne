@@ -2,6 +2,7 @@ package model;
 
 import java.awt.Color;
 import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,5 +40,5 @@ public abstract class Wire {
         return ports.get(ports.size() -1);
     }
 
-    public abstract double calculateProgress(Point currentPacketPosition);
+    public abstract double calculateProgress(Point2D.Double currentPacketPosition);
 }

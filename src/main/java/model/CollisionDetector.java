@@ -1,6 +1,7 @@
 package model;
 
 import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,8 +49,8 @@ public class CollisionDetector {
             return false;
         }
 
-        List<java.awt.Point> vertices1 = p1.getVertices();
-        List<java.awt.Point> vertices2 = p2.getVertices();
+        List<Point2D.Double> vertices1 = p1.getVertices();
+        List<Point2D.Double> vertices2 = p2.getVertices();
 
         if (isSeparatingAxis(vertices1, vertices2)) {
             return false;
@@ -62,10 +63,10 @@ public class CollisionDetector {
         return true;
     }
 
-    private static boolean isSeparatingAxis(List<java.awt.Point> vertsA, List<java.awt.Point> vertsB) {
+    private static boolean isSeparatingAxis(List<Point2D.Double> vertsA, List<Point2D.Double> vertsB) {
         for (int i = 0; i < vertsA.size(); i++) {
-            java.awt.Point p1 = vertsA.get(i);
-            java.awt.Point p2 = vertsA.get((i + 1) % vertsA.size());
+            Point2D.Double p1 = vertsA.get(i);
+            Point2D.Double p2 = vertsA.get((i + 1) % vertsA.size());
 
             Vector edge = new Vector(p2.getX() - p1.getX(), p2.getY() - p1.getY());
             Vector axis = new Vector(-edge.getY(), edge.getX());
@@ -80,11 +81,11 @@ public class CollisionDetector {
         return false;
     }
 
-    private static Projection project(List<java.awt.Point> vertices, Vector axis) {
+    private static Projection project(List<Point2D.Double> vertices, Vector axis) {
         double min = Double.MAX_VALUE;
         double max = Double.MIN_VALUE;
 
-        for (Point vertex : vertices) {
+        for (Point2D.Double vertex : vertices) {
             double dotProduct = vertex.getX() * axis.getX() + vertex.getY() * axis.getY();
             min = Math.min(min, dotProduct);
             max = Math.max(max, dotProduct);
@@ -120,7 +121,7 @@ public class CollisionDetector {
             return false;
         }
         Wire wire = packet.getCurrentWire();
-        Point packetCenter = packet.getPosition();
+        Point2D.Double packetCenter = packet.getPosition();
         double packetRadius = packet.getRadius();
 
         Port sourcePort = wire.getSourcePort();
@@ -134,13 +135,13 @@ public class CollisionDetector {
         if (wireStart == null || wireEnd == null) return false;
 
         // Calculate distance from packet center to the line segment of the wire
-        double dist = distanceToLineSegment(packetCenter.x, packetCenter.y, wireStart.x, wireStart.y, wireEnd.x, wireEnd.y);
+        double dist = distanceToLineSegment(packetCenter.getX(), packetCenter.getY(), wireStart.x, wireStart.y, wireEnd.x, wireEnd.y);
 
         // Packet's edge can be at most a small tolerance away from the wire line.
         // Let's define tolerance as a fraction of its radius, e.g., 0.5 * radius.
         // This means the packet's main body must still significantly overlap the wire's path.
-        double tolerance = packetRadius * 0.5;
-        return dist <= tolerance; // If distance from center to line is less than half radius, it's "on"
+        double tolerance = packetRadius; // Packet's center must be within its radius of the wire line.
+        return dist <= tolerance; // If distance from center to line is less than or equal to radius, it's "on"
     }
 
     // Helper method: Distance from point (px, py) to line segment (x1, y1) - (x2, y2)

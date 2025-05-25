@@ -2,6 +2,7 @@ package model;
 
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -184,7 +185,7 @@ public abstract class NetworkSystem {
             packet.setOriginPort(selectedOutputPort);
             packet.setTargetPort(destinationPort);
             packet.setCurrentWire(connectedWire);
-            packet.setPosition(new Point(selectedOutputPort.getAbsolutePosition().x, selectedOutputPort.getAbsolutePosition().y));
+            packet.setPosition(new Point2D.Double(selectedOutputPort.getAbsolutePosition().x, selectedOutputPort.getAbsolutePosition().y));
             packet.setProgressOnWire(0.0);
             packet.setState(PacketState.ON_WIRE);
             packet.setNetworkSystem(null); // No longer inside this system

@@ -2,6 +2,7 @@ package view;
 
 import controller.NetworkController;
 import model.*;
+import java.awt.geom.Point2D;
 
 import javax.swing.*;
 import java.awt.*;
@@ -50,18 +51,16 @@ public class MainFrame extends JFrame {
 
         // Create custom packets for sys1
         ArrayList<Packet> sys1Packets = new ArrayList<>();
-//        sys1Packets.add(new Packet(new Point(0,0), PacketAndPortShape.SQUARE, 10));
-        // // Add more packets if you want
-        sys1Packets.add(new Packet(new Point(0,0), PacketAndPortShape.SQUARE, 12));
-        sys1Packets.add(new Packet(new Point(0,0), PacketAndPortShape.SQUARE, 12));
-        sys1Packets.add(new Packet(new Point(0,0), PacketAndPortShape.TRIANGLE, 8));
-        sys1Packets.add(new Packet(new Point(0,0), PacketAndPortShape.SQUARE, 12));
-        sys1Packets.add(new Packet(new Point(0,0), PacketAndPortShape.SQUARE, 12));
-        sys1Packets.add(new Packet(new Point(0,0), PacketAndPortShape.TRIANGLE, 8));
+        sys1Packets.add(new Packet(new Point2D.Double(0,0), PacketAndPortShape.SQUARE, 12));
+        sys1Packets.add(new Packet(new Point2D.Double(0,0), PacketAndPortShape.SQUARE, 12));
+        sys1Packets.add(new Packet(new Point2D.Double(0,0), PacketAndPortShape.TRIANGLE, 8));
+        sys1Packets.add(new Packet(new Point2D.Double(0,0), PacketAndPortShape.SQUARE, 12));
+        sys1Packets.add(new Packet(new Point2D.Double(0,0), PacketAndPortShape.SQUARE, 12));
+        sys1Packets.add(new Packet(new Point2D.Double(0,0), PacketAndPortShape.TRIANGLE, 8));
 
-        sys1Packets.add(new Packet(new Point(0,0), PacketAndPortShape.SQUARE, 12));
-        sys1Packets.add(new Packet(new Point(0,0), PacketAndPortShape.SQUARE, 12));
-        sys1Packets.add(new Packet(new Point(0,0), PacketAndPortShape.TRIANGLE, 8));
+        sys1Packets.add(new Packet(new Point2D.Double(0,0), PacketAndPortShape.SQUARE, 12));
+        sys1Packets.add(new Packet(new Point2D.Double(0,0), PacketAndPortShape.SQUARE, 12));
+        sys1Packets.add(new Packet(new Point2D.Double(0,0), PacketAndPortShape.TRIANGLE, 8));
 
 
 

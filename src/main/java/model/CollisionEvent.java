@@ -1,6 +1,7 @@
 package model;
 
-import java.awt.Point;
+// import java.awt.Point;
+import java.awt.geom.Point2D; // Import Point2D
 
 /**
  * Represents a collision between two packets
@@ -8,7 +9,7 @@ import java.awt.Point;
 public class CollisionEvent {
     private Packet packet1;
     private Packet packet2;
-    private Point collisionPoint;
+    private Point2D.Double collisionPoint; // Changed to Point2D.Double
     private long timestamp;
     private double impactStrength;
     
@@ -18,9 +19,10 @@ public class CollisionEvent {
         this.timestamp = System.currentTimeMillis();
         
         // Calculate collision point (midpoint between packet centers)
-        Point p1 = packet1.getPosition();
-        Point p2 = packet2.getPosition();
-        this.collisionPoint = new Point((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+        Point2D.Double p1Pos = packet1.getPosition(); // Packet position is Point2D.Double
+        Point2D.Double p2Pos = packet2.getPosition();
+        this.collisionPoint = new Point2D.Double((p1Pos.getX() + p2Pos.getX()) / 2.0,
+                                                 (p1Pos.getY() + p2Pos.getY()) / 2.0);
         
         // Calculate impact strength based on relative speeds and sizes
         this.impactStrength = calculateImpactStrength();
@@ -54,11 +56,11 @@ public class CollisionEvent {
         packet2.addNoise(noiseAmount);
         
         // Apply small impact forces to push packets apart
-        Point p1 = packet1.getPosition();
-        Point p2 = packet2.getPosition();
+        Point2D.Double p1Pos = packet1.getPosition();
+        Point2D.Double p2Pos = packet2.getPosition();
         
-        double dx = p2.x - p1.x;
-        double dy = p2.y - p1.y;
+        double dx = p2Pos.getX() - p1Pos.getX();
+        double dy = p2Pos.getY() - p1Pos.getY();
         double distance = Math.sqrt(dx * dx + dy * dy);
         
         if (distance > 0.01) { // Avoid division by zero
@@ -81,13 +83,13 @@ public class CollisionEvent {
     // Getters
     public Packet getPacket1() { return packet1; }
     public Packet getPacket2() { return packet2; }
-    public Point getCollisionPoint() { return new Point(collisionPoint.x, collisionPoint.y); }
+    public Point2D.Double getCollisionPoint() { return new Point2D.Double(collisionPoint.getX(), collisionPoint.getY()); } // Return Point2D.Double
     public long getTimestamp() { return timestamp; }
     public double getImpactStrength() { return impactStrength; }
     
     @Override
     public String toString() {
-        return String.format("CollisionEvent{p1=%s, p2=%s, point=%s, strength=%.1f}", 
-                           packet1.getId(), packet2.getId(), collisionPoint, impactStrength);
+        return String.format("CollisionEvent{p1=%s, p2=%s, point=(%.2f, %.2f), strength=%.1f}", 
+                           packet1.getId(), packet2.getId(), collisionPoint.getX(), collisionPoint.getY(), impactStrength);
     }
 } 

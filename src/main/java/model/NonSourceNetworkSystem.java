@@ -1,6 +1,7 @@
 package model;
 
 import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -27,7 +28,8 @@ public class NonSourceNetworkSystem extends NetworkSystem {
         packet.setTargetPort(null);
         packet.setOriginPort(null);
         packet.setNetworkSystem(this); // Packet is now inside this system
-        packet.setPosition(new Point(this.position.x + this.width / 2, this.position.y + getTotalHeight() / 2));
+        packet.setPosition(new Point2D.Double(this.position.x + this.width / 2.0, 
+                                            this.position.y + getTotalHeight() / 2.0));
 
         if (storage.size() >= storageLimit) {
             //System.out.println("NonSourceSystem " + getId() + " storage full. Packet " + packet.getId() + " LOST.");
