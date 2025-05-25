@@ -169,13 +169,13 @@ public abstract class NetworkSystem {
 
     protected boolean sendPacketToWire(Packet packet, NetworkModel networkModel) {
         Port selectedOutputPort = selectOutputPort(packet);
-        System.out.println("    - Selected output port: " + (selectedOutputPort != null ? selectedOutputPort.getId() : "null"));
+        // System.out.println("    - Selected output port: " + (selectedOutputPort != null ? selectedOutputPort.getId() : "null"));
 
         if (selectedOutputPort != null && selectedOutputPort.getConnectedWire() != null) {
             Wire connectedWire = selectedOutputPort.getConnectedWire();
             Port destinationPort = connectedWire.getDestinationPort();
-            System.out.println("    - Connected wire: " + connectedWire);
-            System.out.println("    - Destination port: " + (destinationPort != null ? destinationPort.getId() : "null"));
+            // System.out.println("    - Connected wire: " + connectedWire);
+            // System.out.println("    - Destination port: " + (destinationPort != null ? destinationPort.getId() : "null"));
 
             if (destinationPort == null || destinationPort.getIoType() != IOType.INPUT) {
                 System.err.println("NetworkSystem " + id + ": Error sending packet. Destination port is null or not an INPUT port.");
@@ -189,6 +189,7 @@ public abstract class NetworkSystem {
             packet.setProgressOnWire(0.0);
             packet.setState(PacketState.ON_WIRE);
             packet.setNetworkSystem(null); // No longer inside this system
+            packet.initializeForWireMovement(); // Initialize speed for acc/decel
 
             selectedOutputPort.setInUse(true); // This port is now busy sending this packet
 

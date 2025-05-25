@@ -166,4 +166,44 @@ public class CollisionDetector {
         double dy = py - closestY;
         return Math.sqrt(dx * dx + dy * dy);
     }
+
+    /**
+     * Checks if a packet, which has nominally reached the end of a wire (progress >= 1.0),
+     * is close enough to the target port to be considered a valid arrival.
+     * @param packet The packet.
+     * @param targetPort The target port.
+     * @param wire The wire the packet is on.
+     * @return True if the packet is close enough to the port for arrival, false otherwise.
+     */
+    public static boolean isPacketNearPort(Packet packet, Port targetPort, Wire wire) {
+        if (packet == null || targetPort == null || wire == null || packet.getPosition() == null) {
+            return false;
+        }
+        Point2D.Double packetPos = packet.getPosition();
+        Point2D.Double portPos = targetPort.getAbsolutePositionAsPoint2D(); // Assuming Port has this
+
+        // Check distance from packet center to port center
+        double distanceToPortCenter = packetPos.distance(portPos);
+
+        // Allow arrival if packet center is within, say, 1.5 times its radius from port center.
+        // This gives some leeway for slight overshoots or displacements at the very end.
+        double arrivalTolerance = packet.getRadius() * 1.5; 
+
+        if (distanceToPortCenter > arrivalTolerance) {
+            return false; // Too far from port center
+        }
+
+        // Additionally, ensure the packet is still generally aligned with the wire's end,
+        // not just near the port but having come from a completely different angle.
+        // This reuses a simplified version of isPacketStillOnWire logic, focusing on the endpoint.
+        // The distance from packet to wire segment should still be small.
+        double toleranceForWireAlignment = packet.getRadius() * 2.0; // Slightly more generous than strict on-wire
+        
+        Point2D.Double wireStart = wire.getSourceAbsolutePosition();
+        Point2D.Double wireEnd = wire.getDestinationAbsolutePosition();
+
+        double distToWire = distanceToLineSegment(packetPos.x, packetPos.y, wireStart.x, wireStart.y, wireEnd.x, wireEnd.y);
+        
+        return distToWire <= toleranceForWireAlignment;
+    }
 }

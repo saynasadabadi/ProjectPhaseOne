@@ -33,17 +33,15 @@ public class CollisionEvent {
      */
     private double calculateImpactStrength() {
         // Base strength on packet sizes
-        double baseStrength = (packet1.getRadius() + packet2.getRadius()) * 2.0;
+        double baseStrength = (packet1.getRadius() + packet2.getRadius()) * 2.0; // Example: (8+8)*2 = 32
+
+        // Add component based on their current speeds from nominal wire movement
+        double speedComponent = (packet1.getCurrentSpeed() + packet2.getCurrentSpeed()) * 1.5; // Reduced multiplier from 3.5 to 1.5
+
+        baseStrength += speedComponent;
         
-        // Add velocity component if available
-        Vector v1 = packet1.getVelocity();
-        Vector v2 = packet2.getVelocity();
-        if (v1 != null && v2 != null) {
-            double relativeSpeed = v1.subtract(v2).magnitude();
-            baseStrength += relativeSpeed * 5.0; // Amplify based on relative motion
-        }
-        
-        return Math.min(100.0, baseStrength); // Cap at reasonable maximum
+        // System.out.println("Impact Strength: Base=" + ((packet1.getRadius() + packet2.getRadius()) * 2.0) + ", SpeedComp=" + speedComponent + ", TotalRaw=" + baseStrength);
+        return Math.min(100.0, baseStrength); // Reduced cap from 150.0 to 100.0 as overall strength is lower
     }
     
     /**

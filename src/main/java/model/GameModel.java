@@ -466,30 +466,17 @@ public class GameModel {
 
         if(isLiveRun) {
             long currentTimeNanos = System.nanoTime();
+            if (lastUpdateTimeNanos == 0) lastUpdateTimeNanos = currentTimeNanos - (long)(GAME_UPDATE_DELAY * 1_000_000L); // Initialize if first time
             long deltaTimeNanos = currentTimeNanos - lastUpdateTimeNanos;
-            long maxReasonableDeltaNanos = (long)GAME_UPDATE_DELAY * 1_000_000L * 3L;
-            if (deltaTimeNanos <= 0L || deltaTimeNanos > maxReasonableDeltaNanos) {
-                deltaTimeNanos = (long)GAME_UPDATE_DELAY * 1_000_000L;
-            }
+            long maxReasonableDeltaNanos = (long)GAME_UPDATE_DELAY * 1_000_000L * 5L; // Allow up to 5x delay
+            if (deltaTimeNanos <= 0L ) deltaTimeNanos = (long)GAME_UPDATE_DELAY * 1_000_000L; // If negative or zero, use ideal
+            if (deltaTimeNanos > maxReasonableDeltaNanos) deltaTimeNanos = maxReasonableDeltaNanos; // Cap max delta
+            
             this.lastUpdateTimeNanos = currentTimeNanos;
             double idealFrameDurationNanos = (double)GAME_UPDATE_DELAY * 1_000_000.0;
             speedFactor = deltaTimeNanos / idealFrameDurationNanos;
-            simulatedTimeMillis = System.currentTimeMillis(); // For live run, use actual time
+            simulatedTimeMillis = System.currentTimeMillis(); 
         } else {
-            // For snapshot generation, calculate simulated time based on the current step.
-            // history.size() gives the next step number (e.g., if step 0 is in, size is 1, so it's for step 1's logic)
-            // However, attemptPacketRelease is usually based on a 'current' time.
-            // Let's use the *start* of the current step's time.
-            // When updateGameLogic is called in executeAllSnapshots for 'step s', history contains 0 to s-1.
-            // So, the "current time" for this update can be considered (step-1) * GAME_UPDATE_DELAY if step > 0
-            // or more simply, use the step number that is *about to be* snapshotted.
-            // The loop in executeAllSnapshots is: for (int step = 1; step <= maxTimeSteps; step++)
-            // updateGameLogic is called, then history.put(step, ...)
-            // So, when updateGameLogic is called, 'step' from the loop is the current target step.
-            // Let's find a way to pass the current step or derive it.
-            // The history map grows. history.size() reflects the number of snapshots *already taken*.
-            // If history has snapshot 0, size is 1. If it has 0 and 1, size is 2.
-            // When updateGameLogic is called for step 's', history.size() = s.
             simulatedTimeMillis = (long)history.size() * GAME_UPDATE_DELAY;
         }
 
@@ -507,18 +494,6 @@ public class GameModel {
                 Port targetPort = packet.getTargetPort();
                 Port originPort = packet.getOriginPort();
 
-                // Call updateMovement first. This applies displacement and handles noise.
-                packet.updateMovement();
-
-                // Check if packet was lost due to noise during updateMovement()
-                if (packet.getState() == PacketState.LOST) {
-                    if (!networkModel.getLostPackets().contains(packet)) {
-                        networkModel.addLostPacket(packet); 
-                    }
-                    continue; // Packet is lost, skip further ON_WIRE logic
-                }
-
-                // If wire/ports are invalid, packet is lost
                 if (wire == null || targetPort == null || originPort == null) {
                     packet.setState(PacketState.LOST);
                     packet.setKnockedOffWire(true);
@@ -528,130 +503,91 @@ public class GameModel {
                     }
                     continue;
                 }
+
+                // 1. Update packet's intended speed on wire (accel/decel based on current progress)
+                packet.updateCurrentSpeedOnWire(speedFactor, wire);
+
+                // 2. Calculate nominal movement vector along the wire
+                Point2D.Double wireDirStart = wire.getSourceAbsolutePosition();
+                Point2D.Double wireDirEnd = wire.getDestinationAbsolutePosition();
+                double dx = wireDirEnd.x - wireDirStart.x;
+                double dy = wireDirEnd.y - wireDirStart.y;
+                double wireActualLength = wire.getLength(); // Use the wire's actual length
                 
-                // Update packet's progressOnWire based on its current (possibly displaced) position
-                double projectedProgress = wire.calculateProgress(packet.getPosition());
-                // Set progress before deciding on displacement or nominal movement logic path
-                packet.setProgressOnWire(projectedProgress);
+                Vector nominalMovementVector = new Vector(0,0);
+                if (wireActualLength > 0.001) {
+                    double normalizedDx = dx / wireActualLength;
+                    double normalizedDy = dy / wireActualLength;
+                    double nominalDistanceThisFrame = packet.getCurrentSpeed() * speedFactor;
+                    nominalMovementVector = new Vector(normalizedDx * nominalDistanceThisFrame, 
+                                                       normalizedDy * nominalDistanceThisFrame);
+                }
 
-                // Get wire start/end Point (java.awt.Point) for direction and snapping
-                Point startPosPoint = originPort.getAbsolutePosition();
-                Point endPosPoint = targetPort.getAbsolutePosition();
-                double totalWireDistance = startPosPoint.distance(endPosPoint);
+                // 3. Update packet position by this nominal movement along wire direction
+                Point2D.Double currentPos = packet.getPosition();
+                packet.setPosition(currentPos.getX() + nominalMovementVector.getX(), 
+                                   currentPos.getY() + nominalMovementVector.getY());
 
-                // Check if packet is currently being displaced significantly by an impact
-                if (packet.getDisplacementVelocity().magnitude() > Packet.MIN_DISPLACEMENT_VELOCITY_MAGNITUDE) {
-                    // Packet is drifting. Its visual position is already set by updateMovement().
-                    // Its progressOnWire now reflects its true projected position.
-                    if (!CollisionDetector.isPacketStillOnWire(packet)) {
-                        System.out.println("Packet " + packet.getId() + " knocked off wire " + wire.getId() + " while drifting.");
-                        packet.setState(PacketState.LOST);
-                        packet.setKnockedOffWire(true);
-                        if (originPort != null) originPort.setInUse(false);
-                        if (!networkModel.getLostPackets().contains(packet)) {
-                            networkModel.addLostPacket(packet);
-                        }
-                        continue; 
+                // 4. Apply displacement from impacts (if any) and handle noise-related state changes.
+                // This will further modify packet.position.
+                packet.applyDisplacementAndNoiseEffects(); 
+
+                // 5. Check if packet was lost due to noise during applyDisplacementAndNoiseEffects()
+                if (packet.getState() == PacketState.LOST) {
+                    if (!networkModel.getLostPackets().contains(packet)) {
+                        networkModel.addLostPacket(packet); 
                     }
-                    // If drifting but still on wire, it doesn't "arrive" this frame by following wire path strictly.
-                    // Its progressOnWire has been updated based on its drifted position. If that progress >= 1.0,
-                    // it might be considered for arrival if it's also still on the wire.
-                    // However, typically arrival is for packets following the wire.
-                    // Let's check if, despite drifting, its projection means it "arrived" and is on wire.
-                     if (packet.getProgressOnWire() >= 1.0 && CollisionDetector.isPacketStillOnWire(packet)) {
-                        // Snap to destination if it drifted past the end but is still on the wire somehow
-                        packet.setPosition(endPosPoint.x, endPosPoint.y);
-                        packet.setProgressOnWire(1.0); // Correct progress to 1.0
+                    continue; 
+                }
 
-                        // Process arrival for drifting packet that reached end
-                        if (originPort != null) originPort.setInUse(false);
-                        NetworkSystem destSystem = targetPort.getNetworkSystem();
-                        if (destSystem != null) {
-                            destSystem.processIncomingPacket(packet, targetPort, networkModel);
-                        } else {
-                            packet.setState(PacketState.LOST);
-                            packet.setKnockedOffWire(true);
-                            packet.freeOriginPort();
-                            if (!networkModel.getLostPackets().contains(packet)) {
-                                networkModel.addLostPacket(packet);
-                            }
-                        }
-                        continue; 
-                    }
-
-
-                } else { // Displacement has worn off OR was never significant. Packet moves nominally.
-                    // The packet's current position is packet.getPosition() (a Point2D.Double).
-                    // Its current progress is packet.getProgressOnWire() (which was set to projectedProgress from its current position).
-
-                    double distanceToCover = Packet.SPEED * speedFactor;
-                    double progressIncrement = (totalWireDistance > 0.01) ? (distanceToCover / totalWireDistance) : 0;
-
-                    // Calculate movement vector components along the wire (based on int Port positions)
-                    double wireDx = endPosPoint.x - startPosPoint.x;
-                    double wireDy = endPosPoint.y - startPosPoint.y;
-                    double moveX = 0;
-                    double moveY = 0;
-
-                    if (totalWireDistance > 0.01) {
-                        moveX = (wireDx / totalWireDistance) * distanceToCover;
-                        moveY = (wireDy / totalWireDistance) * distanceToCover;
-                    }
-
-                    // Get current packet's actual position (Point2D.Double)
-                    Point2D.Double currentPos = packet.getPosition();
-                    // Calculate new position by adding incremental movement vector
-                    double newPacketX = currentPos.getX() + moveX;
-                    double newPacketY = currentPos.getY() + moveY;
-                    packet.setPosition(newPacketX, newPacketY);
-
-                    // Update progress by adding the incremental amount to its PREVIOUS progress.
-                    // The previously set packet.getProgressOnWire() was its projection. We want to add the step to that.
-                    double newCombinedProgress = packet.getProgressOnWire() + progressIncrement;
-                    packet.setProgressOnWire(Math.min(1.0, newCombinedProgress));
-
-                    // If progress indicates arrival, snap the packet's final Point2D.Double position 
-                    // to the integer coordinates of the destination port.
-                    if (packet.getProgressOnWire() >= 1.0) {
-                        packet.setPosition(endPosPoint.x, endPosPoint.y); // Snap using the int Point coords of the Port
-                        packet.setProgressOnWire(1.0); // Ensure progress is exactly 1.0 if snapped
-                    }
-
-                    // Now, validate this new position and progress.
-                    // First, check if it's still on the wire. This check uses the new packet.getPosition() (Point2D.Double).
-                    if (!CollisionDetector.isPacketStillOnWire(packet)) {
-                        System.out.println("Packet " + packet.getId() + " found off wire " + wire.getId() + " after nominal movement/snap.");
-                        packet.setState(PacketState.LOST);
-                        packet.setKnockedOffWire(true);
-                        if (originPort != null) originPort.setInUse(false);
-                        if (!networkModel.getLostPackets().contains(packet)) {
-                            networkModel.addLostPacket(packet);
-                        }
-                        continue;
-                    }
-
-                    // Check for arrival at destination (packet is confirmed to be on wire)
-                    if (packet.getProgressOnWire() >= 1.0) {
-                        // Position was already snapped if progress dictated it.
+                // 6. Update packet's progressOnWire based on its NEW final position
+                double newProgress = wire.calculateProgress(packet.getPosition());
+                packet.setProgressOnWire(newProgress);
+                
+                // 7. Check for arrival at destination port
+                // Arrival means progress is >= 1.0 AND it's still considered "on the wire" enough to snap to port.
+                if (packet.getProgressOnWire() >= 1.0) {
+                    if (CollisionDetector.isPacketNearPort(packet, targetPort, wire)) { // New check needed
+                        Point2D.Double destPortAbsPos = wire.getDestinationAbsolutePosition();
+                        packet.setPosition(destPortAbsPos.x, destPortAbsPos.y);
+                        packet.setProgressOnWire(1.0); 
+                        packet.setState(PacketState.ARRIVED_AT_PORT); 
+                        packet.setCurrentSpeed(0.0); // Explicitly stop speed
+                        
                         if (originPort != null) originPort.setInUse(false);
                         NetworkSystem destSystem = targetPort.getNetworkSystem();
                         if (destSystem != null) {
                             destSystem.processIncomingPacket(packet, targetPort, networkModel);
                         } else {
                             packet.setState(PacketState.LOST);
-                            packet.setKnockedOffWire(true); // Arrived at a port that leads nowhere valid
-                            packet.freeOriginPort(); // Ensure origin port is freed
+                            packet.setKnockedOffWire(true); 
                             if (!networkModel.getLostPackets().contains(packet)) {
                                 networkModel.addLostPacket(packet);
                             }
                         }
-                        continue; // Packet processed (arrived or lost at destination)
+                        continue; 
+                    } else {
+                        // Progress is >=1.0, but it's too far from the wire/port (e.g., flew past significantly off-course)
+                        // Consider it lost or let it continue drifting if that's desired (currently will be marked lost below if off wire)
                     }
                 }
+
+                // 8. If not arrived, check if packet is still on the wire after all movements
+                if (!CollisionDetector.isPacketStillOnWire(packet)) {
+                    packet.setKnockedOffWire(true); // Ensure this flag is set
+                    packet.applyWorldFriction();    // Apply friction if off-wire
+                    
+                    packet.setState(PacketState.LOST);
+                    packet.freeOriginPort(); 
+                    if (!networkModel.getLostPackets().contains(packet)) {
+                        networkModel.addLostPacket(packet);
+                    }
+                    continue; 
+                }
+
             } else if (packet.getState() != PacketState.LOST && packet.getState() != PacketState.DELIVERED) {
-                 // For packets IN_NETWORK_SYSTEM, or other non-ON_WIRE states, still run updateMovement for noise decay etc.
-                 packet.updateMovement();
-                 if (packet.getState() == PacketState.LOST) { // Check if lost by noise
+                 packet.applyDisplacementAndNoiseEffects(); // For non-ON_WIRE packets, still apply these effects
+                 if (packet.getState() == PacketState.LOST) { 
                     if (!networkModel.getLostPackets().contains(packet)) {
                         networkModel.addLostPacket(packet);
                     }

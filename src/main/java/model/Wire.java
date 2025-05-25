@@ -23,6 +23,9 @@ public abstract class Wire {
     public void setColor(Color color) { this.color = color; }
 
     public abstract double getLength();
+    public abstract Point2D.Double getSourceAbsolutePosition();
+    public abstract Point2D.Double getDestinationAbsolutePosition();
+    public abstract Point2D.Double getPointAtProgress(double progress);
 
     public Port getSourcePort() {
         if (ports == null || ports.isEmpty()) return null;

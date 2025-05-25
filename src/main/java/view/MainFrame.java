@@ -83,7 +83,7 @@ public class MainFrame extends JFrame {
         ArrayList<Port> s2OutPorts = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE),
                 new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE))); // Changed shape for variety
         NonSourceNetworkSystem sys2 = new NonSourceNetworkSystem(
-                IndicatorState.OFF, new Point(350, 100), 110, 18, 70,
+                IndicatorState.OFF, new Point(350, 150), 110, 18, 70,
                 s2InPorts, s2OutPorts, 5
         );
         model.addSystem(sys2);

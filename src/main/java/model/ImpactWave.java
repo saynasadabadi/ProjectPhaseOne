@@ -16,7 +16,7 @@ public class ImpactWave {
     private long creationTime;
     
     public static final double DEFAULT_MAX_RADIUS = 30.0;
-    public static final double DEFAULT_EXPANSION_SPEED = 5.0;
+    public static final double DEFAULT_EXPANSION_SPEED = 10.0;
     public static final double DEFAULT_STRENGTH = 50.0;
     public static final long WAVE_LIFETIME_MS = 1000; // 2 seconds
     

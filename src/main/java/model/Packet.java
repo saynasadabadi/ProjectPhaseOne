@@ -27,17 +27,25 @@ public class Packet {
     private double maxNoise; // Maximum noise before packet is lost
     private boolean knockedOffWire; // Flag if packet was knocked off its wire
 
-    public static final double SPEED = 2.0; // Pixels per game update (frame), adjust as needed
+    // --- Fields for Acceleration/Deceleration ---
+    private double currentSpeed; // Current speed of the packet along the wire
+    public static final double MAX_SPEED = 2.0; // Max speed pixels per update
+    public static final double ACCELERATION = 0.1;  // Speed increment per update
+    public static final double DECELERATION = 0.2; // Speed decrement per update (should be > ACCELERATION for effective stopping)
+    // --- End Fields for Acceleration/Deceleration ---
+
+    // public static final double SPEED = 2.0; // Pixels per game update (frame), adjust as needed - REPLACED by currentSpeed
     public static final int DEFAULT_RADIUS = 8; // Default radius if not specified
     public static final double DEFAULT_MAX_NOISE = 100.0; // Default maximum noise threshold
     public static final double COLLISION_NOISE_INCREMENT = 80.0; // Noise added per collision
     // public static final double NOISE_DECAY_RATE = 0.05; // Noise decay is removed
 
     // Constants for displacement velocity due to impact
-    private static final double DISPLACEMENT_DECAY_RATE = 0.15; // Adjusted from previous 0.85 to be a decay *rate*
+    private static final double DISPLACEMENT_DECAY_RATE = 0.35; // Adjusted from previous 0.85 to be a decay *rate*
     public static final double MIN_DISPLACEMENT_VELOCITY_MAGNITUDE = 0.01; // Threshold to consider velocity negligible
     private static final double IMPACT_FORCE_TO_VELOCITY_SCALE = 0.05; // Scales incoming force from collision/wave to velocity
     private static final double MAX_DISPLACEMENT_VELOCITY = 3.0; // Max magnitude of displacement velocity component
+    private static final double WORLD_FRICTION_COEFFICIENT = 0.20; // For slowing down when knocked off wire
 
     public Packet(Point2D.Double position, PacketAndPortShape shape, int radius) {
         this.id = UUID.randomUUID().toString();
@@ -51,6 +59,7 @@ public class Packet {
         this.displacementVelocity = new Vector(0, 0); // Initialize displacement velocity
         this.knockedOffWire = false;
         this.velocity = new Vector(0, 0); // Initialize base velocity (if used elsewhere)
+        this.currentSpeed = 0.0; // Initialize current speed
     }
 
     // Constructor with default radius
@@ -137,11 +146,12 @@ public class Packet {
     // === Movement and Physics ===
     
     /**
-     * Updates packet movement: applies displacement from impact velocity, decays noise.
-     * The actual check for being knocked off the wire is handled in GameModel
-     * using CollisionDetector.isPacketStillOnWire after all movements.
+     * Updates packet's visual position based on displacement from impact velocity, and handles noise.
+     * The packet's nominal position on the wire should have already been set by GameModel
+     * calling wire.getPointAtProgress(packet.getProgressOnWire()) BEFORE this.
+     * This method then applies any *additional* displacement.
      */
-    public void updateMovement() {
+    public void applyDisplacementAndNoiseEffects() {
         // 1. Apply and decay displacement velocity
         if (displacementVelocity.magnitude() > MIN_DISPLACEMENT_VELOCITY_MAGNITUDE) {
             // Apply displacement to current position
@@ -182,7 +192,91 @@ public class Packet {
     public void freeOriginPort() {
         if (originPort != null && originPort.isInUse()) {
             originPort.setInUse(false);
-            System.out.println("Freed origin port " + originPort.getId() + " for lost packet " + getId());
+            // System.out.println("Freed origin port " + originPort.getId() + " for lost packet " + getId());
+        }
+    }
+
+    // === New methods for Acceleration/Deceleration ===
+
+    /**
+     * Resets packet's speed and progress for starting on a new wire.
+     * To be called when packet is set to ON_WIRE state and assigned a wire.
+     */
+    public void initializeForWireMovement() {
+        this.currentSpeed = 0.0;
+        // this.progressOnWire = 0.0; // Progress should be set by initial placement on wire
+        // position should already be at the origin port
+    }
+
+    /**
+     * Updates the packet's current speed along the wire based on acceleration/deceleration rules.
+     * This method ONLY updates currentSpeed. It does NOT update progressOnWire.
+     * GameModel is responsible for updating position and then progressOnWire based on the new speed.
+     *
+     * @param speedFactor General factor from game loop (e.g., delta time based) - currently 1.0 for fixed steps.
+     * @param wire The wire the packet is on.
+     */
+    public void updateCurrentSpeedOnWire(double speedFactor, Wire wire) {
+        if (wire == null || state != PacketState.ON_WIRE) {
+            return; // Or set currentSpeed = 0 if appropriate default
+        }
+
+        double wireLength = wire.getLength();
+        if (wireLength < 0.001) { // Effectively a zero-length wire
+            this.currentSpeed = 0.0;
+            return;
+        }
+
+        // Read current progressOnWire to determine if deceleration is needed.
+        // progressOnWire is managed by GameModel and reflects state from start of this tick or previous.
+        double distanceToStopPixels = (currentSpeed * currentSpeed) / (2 * DECELERATION);
+        double remainingDistancePixels = (1.0 - progressOnWire) * wireLength;
+
+        boolean shouldDecelerate = false;
+        // Check if we need to start decelerating, assuming progress is still before the end.
+        if (currentSpeed > 0 && remainingDistancePixels <= distanceToStopPixels && progressOnWire < 1.0) {
+            shouldDecelerate = true;
+        }
+        
+        // Update speed
+        if (shouldDecelerate) {
+            currentSpeed -= DECELERATION * speedFactor;
+            if (currentSpeed < 0) currentSpeed = 0;
+        } else {
+            // Only accelerate if not yet at the destination (progress < 1.0)
+            // GameModel will set speed to 0 upon arrival.
+            if (progressOnWire < 1.0) {
+                currentSpeed += ACCELERATION * speedFactor;
+                if (currentSpeed > MAX_SPEED) currentSpeed = MAX_SPEED;
+            }
+            // If progressOnWire is >= 1.0, it means packet has arrived or overshot.
+            // Speed should be 0, which GameModel/arrival logic handles.
+            // Or, force it here:
+            // else {
+            //    currentSpeed = 0.0;
+            // }
+        }
+        
+        // Final check: if progress is 1.0 or more, packet has arrived or overshot.
+        // Speed should be zero. GameModel sets packet.setCurrentSpeed(0.0) on arrival.
+        // This is an additional safeguard.
+        if (progressOnWire >= 1.0) {
+            currentSpeed = 0.0;
+        }
+    }
+    
+    /**
+     * Applies world friction to the displacement velocity.
+     * Called by GameModel when the packet is knocked off wire.
+     */
+    public void applyWorldFriction() {
+        if (displacementVelocity.magnitude() > MIN_DISPLACEMENT_VELOCITY_MAGNITUDE) {
+            displacementVelocity = displacementVelocity.multiply(1.0 - WORLD_FRICTION_COEFFICIENT);
+            if (displacementVelocity.magnitude() < MIN_DISPLACEMENT_VELOCITY_MAGNITUDE) {
+                displacementVelocity = new Vector(0, 0); // Stop decaying if very small
+            }
+        } else if (displacementVelocity.magnitude() != 0) { // Ensure it's zero if below threshold
+             displacementVelocity = new Vector(0,0);
         }
     }
 
@@ -280,6 +374,9 @@ public class Packet {
     public void setVelocity(Vector velocity) { this.velocity = velocity; }
 
     public Vector getDisplacementVelocity() { return displacementVelocity; } // Getter for displacement velocity
+
+    public double getCurrentSpeed() { return currentSpeed; }
+    public void setCurrentSpeed(double currentSpeed) { this.currentSpeed = currentSpeed; }
 
     @Override
     public String toString() {

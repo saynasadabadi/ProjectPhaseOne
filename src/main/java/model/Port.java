@@ -2,6 +2,7 @@ package model;
 
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.geom.Point2D;
 import java.util.UUID;
 
 public class Port {
@@ -46,6 +47,15 @@ public class Port {
         // Fallback if no system or relative position (should not happen in normal operation)
         System.err.println("Port " + id + " getAbsolutePosition: networkSystem or relativePosition is null.");
         return new Point(0,0); // Or throw an exception
+    }
+
+    public Point2D.Double getAbsolutePositionAsPoint2D() {
+        if (networkSystem != null && relativePosition != null && networkSystem.getPosition() != null) {
+            return new Point2D.Double(networkSystem.getPosition().x + relativePosition.x,
+                                      networkSystem.getPosition().y + relativePosition.y);
+        }
+        System.err.println("Port " + id + " getAbsolutePositionAsPoint2D: networkSystem, its position, or relativePosition is null.");
+        return new Point2D.Double(0,0); // Fallback
     }
 
     public Rectangle getBounds() {
