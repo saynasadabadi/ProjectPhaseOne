@@ -33,6 +33,9 @@ public class NetworkPanel extends JPanel {
     private JButton addSourceSystemButton;
     private JButton addNonSourceSystemButton;
     private boolean isSliderBeingAdjusted = false;
+    
+    // Game over dialog tracking
+    // private boolean gameOverDialogShown = false; // No longer needed
 
     public NetworkPanel(GameModel model) {
         this.gameModel = model;
@@ -190,8 +193,23 @@ public class NetworkPanel extends JPanel {
         if (gameModel == null || gameModel.getNetworkModel() == null) return;
 
         NetworkModel nm = gameModel.getNetworkModel();
-        statsLabel.setText(String.format("Packets: D %d | L %d | A %d",
-                nm.getDeliveredCount(), nm.getLostCount(), nm.getPackets().size()));
+        
+        // Enhanced packet stats with loss percentage
+        double lossPercentage = gameModel.getPacketLossPercentage();
+        String lossText = String.format("%.1f%%", lossPercentage);
+        
+        // Color-code loss percentage - red if approaching danger zone
+        if (lossPercentage > 40.0) {
+            statsLabel.setForeground(Color.RED);
+        } else if (lossPercentage > 25.0) {
+            statsLabel.setForeground(Color.ORANGE);
+        } else {
+            statsLabel.setForeground(Color.WHITE);
+        }
+        
+        statsLabel.setText(String.format("Packets: D %d | L %d (%s) | A %d",
+                nm.getDeliveredCount(), nm.getLostCount(), lossText, nm.getPackets().size()));
+        
         coinsLabel.setText("Coins: " + nm.getPlayerCoins());
 
         double actualCommittedWireLength = nm.getCurrentWireLength();
@@ -217,20 +235,39 @@ public class NetworkPanel extends JPanel {
             timeSlider.setMaximum(maxSteps);
         }
         
-        // Update time display (show time in seconds)
-        timeStepLabel.setText(String.format("Time: %.2fs / %.1fs", currentTime, maxTime));
+        // Update time display with game over status
+        if (gameModel.isGameOverTriggered()) {
+            timeStepLabel.setText(String.format("GAME OVER - Loss: %.1f%% > 50%%", lossPercentage));
+            timeStepLabel.setForeground(Color.RED);
+            
+            // Show game over dialog if it just happened
+            if (gameModel.hasJustGotGameOver()) {
+                gameModel.acknowledgeGameOver(); // Acknowledge it so dialog doesn't re-show without a new event
+                SwingUtilities.invokeLater(() -> showGameOverDialog(lossPercentage, nm));
+            }
+        } else {
+            timeStepLabel.setText(String.format("Time: %.2fs / %.1fs", currentTime, maxTime));
+            timeStepLabel.setForeground(Color.WHITE);
+            // gameOverDialogShown = false; // No longer needed
+        }
         
         if (!isSliderBeingAdjusted && timeSlider.getValue() != currentStep) {
             timeSlider.setValue(currentStep);
         }
 
         // Set button text based on game state
-        if (!gameModel.isGameRunning()) {
+        if (gameModel.isExecutingSnapshots()) {
+            executeButton.setText("Executing...");
+            executeButton.setEnabled(false);
+        } else if (!gameModel.isGameRunning()) {
             executeButton.setText("Execute");
+            executeButton.setEnabled(true);
         } else if (gameModel.isGamePaused()) {
             executeButton.setText("Resume");
+            executeButton.setEnabled(true);
         } else {
             executeButton.setText("Pause");
+            executeButton.setEnabled(true);
         }
         
         // Control button visibility based on game state
@@ -334,6 +371,11 @@ public class NetworkPanel extends JPanel {
                 drawPacket(g2d, packet);
             }
         }
+        
+        // Draw impact waves
+        for (ImpactWave wave : gameModel.getActiveImpactWaves()) {
+            drawImpactWave(g2d, wave);
+        }
 
         g2d.dispose();
 
@@ -431,6 +473,59 @@ public class NetworkPanel extends JPanel {
         g2d.setStroke(new BasicStroke(1.5f));
         g2d.drawPolygon(polygon);
         g2d.setStroke(new BasicStroke(1f));
+    }
+    
+    private void drawImpactWave(Graphics2D g2d, ImpactWave wave) {
+        if (!wave.isActive()) return;
+        
+        Point origin = wave.getOrigin();
+        double radius = wave.getCurrentRadius();
+        
+        // Calculate fade based on wave age and max radius
+        double fadeRatio = Math.max(0.0, 1.0 - (radius / wave.getMaxRadius()));
+        int alpha = (int) (255 * fadeRatio * 0.6); // Max 60% opacity
+        
+        if (alpha <= 0) return;
+        
+        // Draw the wave as a circle with fading effect
+        Color waveColor = new Color(255, 255, 100, alpha); // Yellow with transparency
+        g2d.setColor(waveColor);
+        
+        // Draw multiple concentric circles for wave effect
+        g2d.setStroke(new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        int waveRadius = (int) radius;
+        g2d.drawOval(origin.x - waveRadius, origin.y - waveRadius, waveRadius * 2, waveRadius * 2);
+        
+        // Inner wave with different opacity
+        int innerAlpha = (int) (alpha * 0.5);
+        if (innerAlpha > 0 && radius > 10) {
+            Color innerWaveColor = new Color(255, 200, 50, innerAlpha);
+            g2d.setColor(innerWaveColor);
+            int innerRadius = (int) (radius * 0.7);
+            g2d.drawOval(origin.x - innerRadius, origin.y - innerRadius, innerRadius * 2, innerRadius * 2);
+        }
+        
+        g2d.setStroke(new BasicStroke(1f)); // Reset stroke
+    }
+
+    /**
+     * Shows the game over dialog and handles user response
+     */
+    private void showGameOverDialog(double lossPercentage, NetworkModel nm) {
+        JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+        
+        GameOverDialog dialog = new GameOverDialog(
+            parentFrame, 
+            lossPercentage, 
+            nm.getDeliveredCount(), 
+            nm.getLostCount(), 
+            nm.getPlayerCoins(),
+            this.controller // Pass the controller
+        );
+        
+        dialog.showDialog(); // Call the updated showDialog method
+        
+        // No longer need to handle restart/menu logic here, dialog handles it
     }
 
 }

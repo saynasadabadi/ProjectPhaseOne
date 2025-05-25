@@ -79,6 +79,14 @@ public class NetworkController extends MouseAdapter implements java.awt.event.Ke
         view.updateStatsDisplay(); // Update button visibility & stats
     }
 
+    public void restartLevel() {
+        // Reset the game to design mode and clear all progress
+        gameModel.reDesign();
+        view.updateStatsDisplay();
+        view.repaint();
+        System.out.println("Level restarted - returning to design mode.");
+    }
+
     public void addNetworkSystem(NetworkSystem system) {
         if (gameModel != null && gameModel.getNetworkModel() != null) {
             gameModel.getNetworkModel().addSystem(system);

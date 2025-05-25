@@ -36,6 +36,19 @@ public class GameModel {
     private boolean snapshotsReady = false; // True when all snapshots are created
     // --- End Snapshot Execution State ---
 
+    // --- Collision and Impact Wave System ---
+    private List<ImpactWave> activeImpactWaves = new ArrayList<>();
+    private boolean collisionDetectionEnabled = true;
+    private boolean impactWavesEnabled = true;
+    private long lastCollisionCheckTime = 0;
+    private static final long COLLISION_CHECK_INTERVAL = 16; // Check every ~16ms (60fps)
+    
+    // Game Over tracking
+    private boolean gameOverTriggered = false;
+    private double packetLossThreshold = 50.0; // 50% loss triggers game over
+    private boolean justGotGameOver = false; // To trigger dialog only once
+    // --- End Collision System ---
+
     public GameModel(double timeLimitSeconds) {
         this.timeLimitSeconds = timeLimitSeconds;
         this.maxTimeSteps = (int) Math.ceil(timeLimitSeconds * TARGET_FPS);
@@ -43,9 +56,9 @@ public class GameModel {
         this.temporaryWireLength = 0.0;
     }
 
-    // Backward compatibility constructor (default 10 seconds)
+    // Backward compatibility constructor (default 60 seconds)
     public GameModel() {
-        this(10.0); // Default 10 seconds
+        this(10.0); // Default 60 seconds
     }
 
     // ... (Keep existing getters and setters: getNetworkModel, setNetworkModel, etc.) ...
@@ -120,6 +133,40 @@ public class GameModel {
     public boolean areSnapshotsReady() {
         return snapshotsReady;
     }
+    
+    // --- New collision and game over methods ---
+    
+    public boolean isGameOverTriggered() {
+        return gameOverTriggered;
+    }
+    
+    public boolean hasJustGotGameOver() {
+        return justGotGameOver;
+    }
+
+    public void acknowledgeGameOver() {
+        this.justGotGameOver = false;
+    }
+    
+    public double getPacketLossPercentage() {
+        if (networkModel == null) return 0.0;
+        int totalPackets = networkModel.getDeliveredCount() + networkModel.getLostCount() + networkModel.getPackets().size();
+        if (totalPackets == 0) return 0.0;
+        return (double) networkModel.getLostCount() / totalPackets * 100.0;
+    }
+    
+    public void setCollisionDetectionEnabled(boolean enabled) {
+        this.collisionDetectionEnabled = enabled;
+    }
+    
+    public void setImpactWavesEnabled(boolean enabled) {
+        this.impactWavesEnabled = enabled;
+    }
+    
+    public List<ImpactWave> getActiveImpactWaves() {
+        return new ArrayList<>(activeImpactWaves);
+    }
+    
     // --- End Getters/Setters ---
 
     public boolean isNetworkModelValidForStart() {
@@ -162,6 +209,7 @@ public class GameModel {
             snapshotsReady = false;
             currentTimeStep = 0;
             history.clear();
+            gameOverTriggered = false; // Reset game over state
             
             // Show loading state
             if (repaintCallback != null) repaintCallback.run();
@@ -200,6 +248,7 @@ public class GameModel {
         // Reset to initial state
         networkModel.resetSimulation();
         prepareInitialPackets();
+        lastCollisionCheckTime = 0; // Reset collision check time for new snapshot generation
         
         // Store initial snapshot (step 0)
         history.put(0, new NetworkModelSnapshot(networkModel));
@@ -208,6 +257,14 @@ public class GameModel {
         for (int step = 1; step <= maxTimeSteps; step++) {
             updateGameLogic(false); // Simulate one step
             history.put(step, new NetworkModelSnapshot(networkModel));
+            
+            // Check for game over during simulation
+            if (!gameOverTriggered && getPacketLossPercentage() > packetLossThreshold) {
+                gameOverTriggered = true;
+                justGotGameOver = true; // Set when game over first occurs
+                System.out.println("Game Over triggered at step " + step + " - Packet loss: " + String.format("%.1f%%", getPacketLossPercentage()));
+                // break; // Stop simulation early - let it complete for full history
+            }
             
             // Update progress occasionally
             if (step % (maxTimeSteps / 10) == 0) {
@@ -246,14 +303,21 @@ public class GameModel {
             public void actionPerformed(ActionEvent e) {
                 if (gameRunning && !gamePaused && snapshotsReady) {
                     // Advance to next snapshot
-                    if (currentTimeStep < maxTimeSteps) {
+                    if (currentTimeStep < maxTimeSteps) { 
                         loadSnapshot(currentTimeStep + 1);
                         
+                        // Check for game over after loading the new step (during playback)
+                        if (!gameOverTriggered && getPacketLossPercentage() > packetLossThreshold) {
+                            gameOverTriggered = true;
+                            justGotGameOver = true; // Set when game over first occurs during playback
+                            System.out.println("Game Over triggered during playback at step " + currentTimeStep + " - Packet loss: " + String.format("%.1f%%", getPacketLossPercentage()));
+                        }
+
                         // Update UI
                         if (repaintCallback != null) repaintCallback.run();
                         if (updateStatsCallback != null) updateStatsCallback.run();
                     } else {
-                        // End of simulation reached, pause automatically
+                        // End of simulation reached or game over, pause automatically
                         pauseExecution();
                     }
                 }
@@ -298,6 +362,9 @@ public class GameModel {
         gamePaused = false; // Reset pause state
         snapshotsReady = false; // Reset snapshots ready state
         isExecutingSnapshots = false; // Reset executing snapshots state
+        gameOverTriggered = false; // Reset game over state
+        justGotGameOver = false; // Reset this flag too
+        activeImpactWaves.clear(); // Clear impact waves
         
         // Reset the network simulation to initial state
         if (networkModel != null) {
@@ -388,12 +455,15 @@ public class GameModel {
 
     /**
      * Updates the game logic by one step or based on delta-time.
+     * Now includes collision detection and impact wave processing.
      * @param isLiveRun If true, uses delta-time; otherwise, uses fixed steps.
      */
     private void updateGameLogic(boolean isLiveRun) {
         if (networkModel == null) return;
 
         double speedFactor = 1.0; // Default for fixed steps
+        long simulatedTimeMillis;
+
         if(isLiveRun) {
             long currentTimeNanos = System.nanoTime();
             long deltaTimeNanos = currentTimeNanos - lastUpdateTimeNanos;
@@ -404,18 +474,44 @@ public class GameModel {
             this.lastUpdateTimeNanos = currentTimeNanos;
             double idealFrameDurationNanos = (double)GAME_UPDATE_DELAY * 1_000_000.0;
             speedFactor = deltaTimeNanos / idealFrameDurationNanos;
+            simulatedTimeMillis = System.currentTimeMillis(); // For live run, use actual time
+        } else {
+            // For snapshot generation, calculate simulated time based on the current step.
+            // history.size() gives the next step number (e.g., if step 0 is in, size is 1, so it's for step 1's logic)
+            // However, attemptPacketRelease is usually based on a 'current' time.
+            // Let's use the *start* of the current step's time.
+            // When updateGameLogic is called in executeAllSnapshots for 'step s', history contains 0 to s-1.
+            // So, the "current time" for this update can be considered (step-1) * GAME_UPDATE_DELAY if step > 0
+            // or more simply, use the step number that is *about to be* snapshotted.
+            // The loop in executeAllSnapshots is: for (int step = 1; step <= maxTimeSteps; step++)
+            // updateGameLogic is called, then history.put(step, ...)
+            // So, when updateGameLogic is called, 'step' from the loop is the current target step.
+            // Let's find a way to pass the current step or derive it.
+            // The history map grows. history.size() reflects the number of snapshots *already taken*.
+            // If history has snapshot 0, size is 1. If it has 0 and 1, size is 2.
+            // When updateGameLogic is called for step 's', history.size() = s.
+            simulatedTimeMillis = (long)history.size() * GAME_UPDATE_DELAY;
         }
-
-        long currentWallClockMillis = System.currentTimeMillis();
 
         // 1. Attempt packet release
         for (NetworkSystem system : networkModel.getSystems()) {
-            system.attemptPacketRelease(currentWallClockMillis, networkModel);
+            system.attemptPacketRelease(simulatedTimeMillis, networkModel);
         }
 
-        // 2. Update packet movement
+        // 2. Update packet movement and physics
         List<Packet> packetsToProcess = new CopyOnWriteArrayList<>(networkModel.getPackets());
         for (Packet packet : packetsToProcess) {
+            // Update packet physics (noise decay, impact force handling)
+            packet.updateMovement();
+            
+            // Handle lost packets due to noise or being knocked off wire
+            if (packet.getState() == PacketState.LOST) {
+                if (!networkModel.getLostPackets().contains(packet)) {
+                    networkModel.addLostPacket(packet);
+                }
+                continue;
+            }
+            
             if (packet.getState() == PacketState.ON_WIRE) {
                 Wire wire = packet.getCurrentWire();
                 Port targetPort = packet.getTargetPort();
@@ -458,15 +554,101 @@ public class GameModel {
                 }
             }
         }
-        // 3. Increment time step only if running live
+        
+        // 3. Collision Detection and Processing
+        processCollisions(isLiveRun, simulatedTimeMillis);
+        
+        // 4. Update Impact Waves
+        updateImpactWaves();
+        
+        // 5. Increment time step
         if(isLiveRun) {
             currentTimeStep++;
         } else if (!isLiveRun) {
             currentTimeStep++; // Also increment when simulating step-by-step
         }
+    }
 
-        // 4. (Optional) Save snapshot if needed (can be heavy)
-        // history.put(currentTimeStep, new NetworkModelSnapshot(networkModel));
+    /**
+     * Processes collisions between packets and creates impact waves
+     */
+    private void processCollisions(boolean isLiveRun, long simulatedTimeMillis) {
+        if (!collisionDetectionEnabled) return;
+        
+        long currentTimeForCheck;
+        if (isLiveRun) {
+            currentTimeForCheck = System.currentTimeMillis();
+            if (currentTimeForCheck - lastCollisionCheckTime < COLLISION_CHECK_INTERVAL) {
+                return; // Skip collision detection this frame for live run
+            }
+        } else { // Snapshot generation
+            currentTimeForCheck = simulatedTimeMillis;
+            // Skip if simulated time hasn't advanced enough since last check,
+            // but always check for the first few steps (e.g. if lastCollisionCheckTime is 0 or very small).
+            if (lastCollisionCheckTime != 0 && (currentTimeForCheck - lastCollisionCheckTime < COLLISION_CHECK_INTERVAL)) {
+                return; 
+            }
+        }
+        lastCollisionCheckTime = currentTimeForCheck;
+        
+        // Get only packets that are actively moving (ON_WIRE)
+        List<Packet> movingPackets = new ArrayList<>();
+        for (Packet packet : networkModel.getPackets()) {
+            if (packet.getState() == PacketState.ON_WIRE && !packet.isKnockedOffWire()) {
+                movingPackets.add(packet);
+            }
+        }
+        
+        if (movingPackets.size() < 2) return;
+        
+        // Use existing collision detector
+        List<List<Packet>> collisionPairs = CollisionDetector.detectCollisions(movingPackets);
+        
+        // Process each collision
+        for (List<Packet> pair : collisionPairs) {
+            if (pair.size() == 2) {
+                CollisionEvent collision = new CollisionEvent(pair.get(0), pair.get(1));
+                
+                // Process immediate collision effects (noise, separation forces)
+                collision.processCollision();
+                
+                // Create impact wave if enabled
+                if (impactWavesEnabled) {
+                    ImpactWave wave = collision.createImpactWave();
+                    activeImpactWaves.add(wave);
+                }
+                
+                System.out.println("Collision detected: " + collision);
+            }
+        }
+    }
+    
+    /**
+     * Updates all active impact waves and applies their forces to nearby packets
+     */
+    private void updateImpactWaves() {
+        if (!impactWavesEnabled) {
+            activeImpactWaves.clear();
+            return;
+        }
+        
+        // Update wave expansion and remove inactive waves
+        activeImpactWaves.removeIf(wave -> {
+            wave.update();
+            return !wave.isActive();
+        });
+        
+        // Apply wave forces to packets
+        for (Packet packet : networkModel.getPackets()) {
+            if (packet.getState() == PacketState.ON_WIRE) {
+                for (ImpactWave wave : activeImpactWaves) {
+                    Vector force = wave.calculateForceAt(packet.getPosition());
+                    if (force.magnitude() > 0.1) {
+                        packet.applyImpactForce(force);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -550,6 +732,8 @@ public class GameModel {
             copy.setOriginPort(original.getOriginPort());
             copy.setProgressOnWire(original.getProgressOnWire());
             copy.setNetworkSystem(original.getNetworkSystem());
+            copy.setNoise(original.getNoise()); // Copy noise level
+            copy.setKnockedOffWire(original.isKnockedOffWire()); // Copy knocked off state
             return copy;
         }
         

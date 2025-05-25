@@ -21,7 +21,7 @@ public abstract class NetworkSystem {
     public static final int PORT_CLICK_PADDING = 2;
 
     protected long lastPacketReleaseTimeMillis = 0;
-    protected static final long PACKET_RELEASE_COOLDOWN_MILLIS = 1000; // 1 second
+    protected static final long PACKET_RELEASE_COOLDOWN_MILLIS = 250; // 0.25 seconds
 
     public NetworkSystem(IndicatorState indicatorState, Point position, int width, int indicator_height, int body_height,
                          ArrayList<Port> inputPorts, ArrayList<Port> outputPorts) {
@@ -168,10 +168,13 @@ public abstract class NetworkSystem {
 
     protected boolean sendPacketToWire(Packet packet, NetworkModel networkModel) {
         Port selectedOutputPort = selectOutputPort(packet);
+        System.out.println("    - Selected output port: " + (selectedOutputPort != null ? selectedOutputPort.getId() : "null"));
 
         if (selectedOutputPort != null && selectedOutputPort.getConnectedWire() != null) {
             Wire connectedWire = selectedOutputPort.getConnectedWire();
             Port destinationPort = connectedWire.getDestinationPort();
+            System.out.println("    - Connected wire: " + connectedWire);
+            System.out.println("    - Destination port: " + (destinationPort != null ? destinationPort.getId() : "null"));
 
             if (destinationPort == null || destinationPort.getIoType() != IOType.INPUT) {
                 System.err.println("NetworkSystem " + id + ": Error sending packet. Destination port is null or not an INPUT port.");
@@ -192,10 +195,10 @@ public abstract class NetworkSystem {
                 networkModel.addPacketToActiveList(packet); // Add to active simulation list
             }
 
-            //System.out.println(this.getClass().getSimpleName() + " " + this.getId() + " sending packet " + packet.getId() + " via port " + selectedOutputPort.getId() + " towards " + destinationPort.getId());
+            System.out.println(this.getClass().getSimpleName() + " " + this.getId() + " sending packet " + packet.getId() + " via port " + selectedOutputPort.getId() + " towards " + destinationPort.getId());
             return true;
         }
-        //System.out.println(this.getClass().getSimpleName() + " " + this.getId() + " failed to find output port or wire for packet " + packet.getId());
+        System.out.println(this.getClass().getSimpleName() + " " + this.getId() + " failed to find output port or wire for packet " + packet.getId());
         return false;
     }
 

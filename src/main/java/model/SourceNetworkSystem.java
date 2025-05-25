@@ -62,24 +62,44 @@ public class SourceNetworkSystem extends NetworkSystem {
 
     @Override
     public void attemptPacketRelease(long currentTimeMillis, NetworkModel networkModel) {
+        // Debug logging to understand what's preventing packet release
+        System.out.println("SourceSystem " + getId() + " attempting packet release...");
+        System.out.println("  - Storage size: " + senderStorage.size());
+        System.out.println("  - Can release packet: " + canReleasePacket(currentTimeMillis));
+        System.out.println("  - Cooldown remaining: " + Math.max(0, PACKET_RELEASE_COOLDOWN_MILLIS - (currentTimeMillis - lastPacketReleaseTimeMillis)) + "ms");
+        
         if (canReleasePacket(currentTimeMillis) && !senderStorage.isEmpty()) {
             // Check if any output port is available (not inUse) before peeking/sending
             boolean anyPortAvailable = getOutputPorts().stream().anyMatch(p -> p.isConnected() && !p.isInUse());
+            System.out.println("  - Any port available: " + anyPortAvailable);
+            
+            // Debug port states
+            for (Port port : getOutputPorts()) {
+                System.out.println("    Port " + port.getId() + ": connected=" + port.isConnected() + ", inUse=" + port.isInUse());
+            }
+            
             if (!anyPortAvailable) {
-                //System.out.println("SourceSystem " + getId() + ": All output ports are busy or not connected. Cannot release packet.");
+                System.out.println("SourceSystem " + getId() + ": All output ports are busy or not connected. Cannot release packet.");
                 return;
             }
 
             Packet packetToSend = senderStorage.peek();
             if (packetToSend != null) {
-                //System.out.println("SourceSystem " + getId() + " attempting to release packet " + packetToSend.getId());
+                System.out.println("SourceSystem " + getId() + " attempting to release packet " + packetToSend.getId());
                 if (sendPacketToWire(packetToSend, networkModel)) {
                     senderStorage.poll(); // Remove from storage only if successfully sent
                     recordPacketRelease(currentTimeMillis);
-                    // System.out.println("SourceSystem " + getId() + " released packet " + packetToSend.getId() + ". Storage now: " + senderStorage.size());
+                    System.out.println("SourceSystem " + getId() + " released packet " + packetToSend.getId() + ". Storage now: " + senderStorage.size());
                 } else {
-                    // System.out.println("SourceSystem " + getId() + " failed to send packet " + packetToSend.getId() + " (no suitable port, or port selection failed).");
+                    System.out.println("SourceSystem " + getId() + " failed to send packet " + packetToSend.getId() + " (no suitable port, or port selection failed).");
                 }
+            }
+        } else {
+            if (senderStorage.isEmpty()) {
+                System.out.println("  - Storage is empty");
+            }
+            if (!canReleasePacket(currentTimeMillis)) {
+                System.out.println("  - Still in cooldown period");
             }
         }
     }
