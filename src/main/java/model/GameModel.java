@@ -342,7 +342,8 @@ public class GameModel {
     }
 
     /**
-     * Stops execution and returns to design mode, clearing all snapshots.
+     * Stops execution and returns to design mode, clearing all snapshots and network state.
+     * This is the action for the "Re-Design" or a full reset to authoring mode.
      */
     public void reDesign() {
         if (gameRunning) {
@@ -352,23 +353,56 @@ public class GameModel {
             }
         }
         
-        // Clear all snapshots and reset to design mode
         history.clear();
         isTimeScrubbing = false;
         currentTimeStep = 0;
-        gamePaused = false; // Reset pause state
-        snapshotsReady = false; // Reset snapshots ready state
-        isExecutingSnapshots = false; // Reset executing snapshots state
-        gameOverTriggered = false; // Reset game over state
-        justGotGameOver = false; // Reset this flag too
-        activeImpactWaves.clear(); // Clear impact waves
+        gamePaused = false; 
+        snapshotsReady = false; 
+        isExecutingSnapshots = false; 
+        gameOverTriggered = false; 
+        justGotGameOver = false; 
+        activeImpactWaves.clear(); 
         
-        // Reset the network simulation to initial state
         if (networkModel != null) {
-            networkModel.resetSimulation();
+            networkModel.resetSimulation(); // Resets to initial packet config *within the current model*
+                                          // but doesn't clear the systems/wires themselves.
         }
         
         System.out.println("GameModel: Switched to re-design mode. All snapshots cleared.");
+        if (repaintCallback != null) repaintCallback.run();
+        if (updateStatsCallback != null) updateStatsCallback.run();
+    }
+
+    /**
+     * Restarts the current level from its initial state (snapshot 0).
+     * This is the action for "Try Again".
+     */
+    public void restartFromInitialSnapshot() {
+        if (gameLoopTimer != null) {
+            gameLoopTimer.stop();
+        }
+        gameRunning = false; // Set gameRunning to false to indicate a full stop/reset state
+        gamePaused = false;  // Ensure not paused
+        isTimeScrubbing = false; // Usually false when not actively playing/scrubbing a completed run
+        gameOverTriggered = false;
+        justGotGameOver = false;
+        // activeImpactWaves will be cleared by loading snapshot 0 if it stores them, or should be cleared
+        activeImpactWaves.clear(); 
+
+        if (history.containsKey(0)) {
+            loadSnapshot(0); // This restores networkModel and sets currentTimeStep to 0
+            // Ensure currentTimeStep is explicitly 0, though loadSnapshot should handle it.
+            this.currentTimeStep = 0; 
+            snapshotsReady = true; // Snapshots are considered ready as we have history
+        } else {
+            // This is a problematic state - means we can't restart from snapshot 0.
+            // Fallback to a full redesign perhaps, or log an error.
+            System.err.println("Error: Cannot restart from initial snapshot. Snapshot 0 not found. Performing full redesign.");
+            reDesign(); // Fallback to full redesign
+            return;
+        }
+
+        System.out.println("GameModel: Level restarted from initial snapshot (Time Step 0).");
         if (repaintCallback != null) repaintCallback.run();
         if (updateStatsCallback != null) updateStatsCallback.run();
     }

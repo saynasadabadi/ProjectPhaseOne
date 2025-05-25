@@ -81,11 +81,11 @@ public class NetworkController extends MouseAdapter implements java.awt.event.Ke
     }
 
     public void restartLevel() {
-        // Reset the game to design mode and clear all progress
-        gameModel.reDesign();
+        // Reset the game to its initial state (snapshot 0)
+        gameModel.restartFromInitialSnapshot(); 
         view.updateStatsDisplay();
         view.repaint();
-        System.out.println("Level restarted - returning to design mode.");
+        // System.out.println("Level restarted - returning to design mode."); // Message can be updated if needed
     }
 
     public void addNetworkSystem(NetworkSystem system) {
