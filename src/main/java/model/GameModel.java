@@ -500,13 +500,13 @@ public class GameModel {
         // 2. Update packet movement and physics
         List<Packet> packetsToProcess = new CopyOnWriteArrayList<>(networkModel.getPackets());
         for (Packet packet : packetsToProcess) {
-            // Update packet physics (noise decay, impact force handling)
-            packet.updateMovement();
+            // Update packet physics (noise decay, impact force handling which now just pushes)
+            packet.updateMovement(); 
             
-            // Handle lost packets due to noise or being knocked off wire
+            // If packet was already lost (e.g., by noise in updateMovement), process and skip
             if (packet.getState() == PacketState.LOST) {
                 if (!networkModel.getLostPackets().contains(packet)) {
-                    packet.freeOriginPort(); // Free the port before adding to lost packets
+                    // packet.freeOriginPort() would have been called in updateMovement if lost by noise
                     networkModel.addLostPacket(packet);
                 }
                 continue;
@@ -519,10 +519,13 @@ public class GameModel {
 
                 if (wire == null || targetPort == null || originPort == null) {
                     packet.setState(PacketState.LOST);
+                    packet.setKnockedOffWire(true); // Mark as knocked off
+                    packet.freeOriginPort();
                     networkModel.addLostPacket(packet);
                     continue;
                 }
 
+                // Standard movement along the wire
                 Point startPos = originPort.getAbsolutePosition();
                 Point endPos = targetPort.getAbsolutePosition();
                 double totalDistance = startPos.distance(endPos);
@@ -541,6 +544,18 @@ public class GameModel {
                 int newY = (int) (startPos.y + (endPos.y - startPos.y) * progress);
                 packet.setPosition(new Point(newX, newY));
 
+                // After all movement (push from impact + normal wire travel),
+                // check if the packet is still on its wire.
+                if (!CollisionDetector.isPacketStillOnWire(packet)) {
+                    System.out.println("Packet " + packet.getId() + " knocked off wire " + wire.getId() + " due to displacement.");
+                    packet.setState(PacketState.LOST);
+                    packet.setKnockedOffWire(true); // Mark as knocked off
+                    packet.freeOriginPort();
+                    networkModel.addLostPacket(packet);
+                    continue; // Skip to next packet
+                }
+
+                // Check for arrival at destination
                 if (packet.getProgressOnWire() >= 1.0) {
                     packet.setPosition(new Point(endPos.x, endPos.y));
                     originPort.setInUse(false);
@@ -549,6 +564,8 @@ public class GameModel {
                         destSystem.processIncomingPacket(packet, targetPort, networkModel);
                     } else {
                         packet.setState(PacketState.LOST);
+                        packet.setKnockedOffWire(true); // Also knocked off if destination is gone
+                        packet.freeOriginPort();
                         networkModel.addLostPacket(packet);
                     }
                 }

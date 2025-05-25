@@ -30,7 +30,7 @@ public class Packet {
     public static final double SPEED = 2.0; // Pixels per game update (frame), adjust as needed
     public static final int DEFAULT_RADIUS = 8; // Default radius if not specified
     public static final double DEFAULT_MAX_NOISE = 100.0; // Default maximum noise threshold
-    public static final double COLLISION_NOISE_INCREMENT = 15.0; // Noise added per collision
+    public static final double COLLISION_NOISE_INCREMENT = 80.0; // Noise added per collision
     public static final double NOISE_DECAY_RATE = 0.5; // Noise reduction per frame
 
     public Packet(Point position, PacketAndPortShape shape, int radius) {
@@ -127,27 +127,34 @@ public class Packet {
     // === Movement and Physics ===
     
     /**
-     * Updates packet movement with impact forces considered
+     * Updates packet movement: applies a gentle push from impact forces.
+     * The actual check for being knocked off the wire is now handled in GameModel
+     * using CollisionDetector.isPacketStillOnWire after all movements.
      */
     public void updateMovement() {
-        if (state == PacketState.ON_WIRE && !knockedOffWire) {
-            // Apply impact forces to potentially knock packet off wire
+        // Apply a gentle push from accumulated impact forces
+        if (state == PacketState.ON_WIRE) { // Only apply push if on wire
             Vector totalImpact = consumeImpactForce();
-            double impactMagnitude = Math.sqrt(totalImpact.getX() * totalImpact.getX() + 
-                                             totalImpact.getY() * totalImpact.getY());
-            
-            // If impact is strong enough, knock packet off wire
-            if (impactMagnitude > radius * 2.0) { // Threshold based on packet size
-                setKnockedOffWire(true);
-                setState(PacketState.LOST);
-                freeOriginPort(); // Free the port when packet is knocked off
+            if (totalImpact.magnitude() > 0.01) { // Only apply if there's a notable force
+                // Scale down the impact for a gentler push.
+                // This factor controls how much the packet is displaced by impact.
+                double pushFactor = 0.05; // Reduced for a very gentle push
+                
+                double dx = totalImpact.getX() * pushFactor;
+                double dy = totalImpact.getY() * pushFactor;
+
+                if (this.position != null) {
+                    this.position.translate((int)Math.round(dx), (int)Math.round(dy));
+                    // No longer setting knockedOffWire or state to LOST here.
+                    // This will be checked in GameModel after regular movement.
+                }
             }
         }
         
-        // Natural noise decay
+        // Natural noise decay (still relevant for visual feedback or other mechanics)
         decayNoise();
         
-        // Check if packet should be lost due to noise
+        // Check if packet should be lost due to excessive noise (this can still happen independently)
         if (shouldBeLostDueToNoise() && state != PacketState.LOST && state != PacketState.DELIVERED) {
             setState(PacketState.LOST);
             freeOriginPort(); // Free the port when packet is lost due to noise
