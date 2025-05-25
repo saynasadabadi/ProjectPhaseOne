@@ -112,4 +112,15 @@ public class StraightWire extends Wire {
         Point2D.Double p2 = getDestinationAbsolutePosition();
         return Line2D.ptSegDist(p1.x, p1.y, p2.x, p2.y, point.x, point.y) < maxDistance;
     }
+
+    @Override
+    public Port getOtherPort(Port knownPort) {
+        if (knownPort == null) return null;
+        if (ports.get(0).equals(knownPort)) {
+            return ports.get(1);
+        } else if (ports.get(1).equals(knownPort)) {
+            return ports.get(0);
+        }
+        return null; // Should not happen if knownPort is one of this wire's ports
+    }
 }

@@ -66,9 +66,9 @@ public class MainFrame extends JFrame {
 
         System.out.println("MainFrame: Creating SourceSystem with " + sys1Packets.size() + " initial packets");
 
-        ArrayList<Port> s1InPorts = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.SQUARE),
+        ArrayList<Port> s1InPorts = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.TRIANGLE),
         new Port(IOType.INPUT, PacketAndPortShape.SQUARE)));
-        ArrayList<Port> s1OutPorts = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE),
+        ArrayList<Port> s1OutPorts = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.TRIANGLE),
         new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE)));
         SourceNetworkSystem sys1 = new SourceNetworkSystem(
                 IndicatorState.OFF, new Point(50, 50), 120, 20, 80,
@@ -78,9 +78,9 @@ public class MainFrame extends JFrame {
         
         System.out.println("MainFrame: SourceSystem created with storage size: " + sys1.getSenderStorage().size());
 
-        ArrayList<Port> s2InPorts = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.SQUARE),
+        ArrayList<Port> s2InPorts = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.TRIANGLE),
                 new Port(IOType.INPUT, PacketAndPortShape.SQUARE))); // Changed shape for variety
-        ArrayList<Port> s2OutPorts = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE),
+        ArrayList<Port> s2OutPorts = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.TRIANGLE),
                 new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE))); // Changed shape for variety
         NonSourceNetworkSystem sys2 = new NonSourceNetworkSystem(
                 IndicatorState.OFF, new Point(350, 150), 110, 18, 70,

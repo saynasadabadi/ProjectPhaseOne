@@ -189,7 +189,7 @@ public abstract class NetworkSystem {
             packet.setProgressOnWire(0.0);
             packet.setState(PacketState.ON_WIRE);
             packet.setNetworkSystem(null); // No longer inside this system
-            packet.initializeForWireMovement(); // Initialize speed for acc/decel
+            packet.initializeForWireMovement(selectedOutputPort); // Initialize speed for acc/decel
 
             selectedOutputPort.setInUse(true); // This port is now busy sending this packet
 
@@ -206,4 +206,13 @@ public abstract class NetworkSystem {
 
     public abstract void processIncomingPacket(Packet packet, Port inputPort, NetworkModel networkModel);
     public abstract void attemptPacketRelease(long currentTimeMillis, NetworkModel networkModel);
+
+    public boolean hasAvailableOutputPort() {
+        for (Port port : getAllPorts()) {
+            if (port.getIoType() == IOType.OUTPUT && !port.isConnected()) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

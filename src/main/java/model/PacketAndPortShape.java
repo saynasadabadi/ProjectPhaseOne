@@ -3,8 +3,8 @@ package model;
 import java.awt.Color;
 
 public enum PacketAndPortShape {
-    SQUARE(4, new Color(0, 150, 255), "Square", 2),
-    TRIANGLE(3, new Color(255, 80, 80), "Triangle", 1);
+    SQUARE(4, new Color(0, 150, 255), "Square", 1),
+    TRIANGLE(3, new Color(255, 80, 80), "Triangle", 2);
 
     private final int numberOfSides;
     private final Color color;

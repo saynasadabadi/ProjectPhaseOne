@@ -44,4 +44,5 @@ public abstract class Wire {
     }
 
     public abstract double calculateProgress(Point2D.Double currentPacketPosition);
+    public abstract Port getOtherPort(Port knownPort);
 }

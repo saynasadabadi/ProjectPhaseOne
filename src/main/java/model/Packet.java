@@ -29,6 +29,7 @@ public class Packet {
 
     // --- Fields for Acceleration/Deceleration ---
     private double currentSpeed; // Current speed of the packet along the wire
+    private double effectiveMaxSpeed; // Max speed considering port compatibility
     public static final double MAX_SPEED = 2.0; // Max speed pixels per update
     public static final double ACCELERATION = 0.1;  // Speed increment per update
     public static final double DECELERATION = 0.2; // Speed decrement per update (should be > ACCELERATION for effective stopping)
@@ -201,11 +202,37 @@ public class Packet {
     /**
      * Resets packet's speed and progress for starting on a new wire.
      * To be called when packet is set to ON_WIRE state and assigned a wire.
+     * @param originPort The port from which this packet is starting its journey on the wire.
      */
-    public void initializeForWireMovement() {
-        this.currentSpeed = 0.0;
-        // this.progressOnWire = 0.0; // Progress should be set by initial placement on wire
+    public void initializeForWireMovement(Port originPort) {
+        // Default progress and position handling should remain as is (set externally)
+        // this.progressOnWire = 0.0; 
         // position should already be at the origin port
+
+        PacketAndPortShape packetShape = this.getShape();
+        PacketAndPortShape portShape = originPort.getShape();
+        boolean isCompatible = (packetShape == portShape);
+
+        this.effectiveMaxSpeed = MAX_SPEED; // Default
+        this.currentSpeed = 0.0; // Default start speed
+
+        if (packetShape == PacketAndPortShape.SQUARE) {
+            if (isCompatible) {
+                this.effectiveMaxSpeed = MAX_SPEED / 2.0;
+            } else { // Incompatible
+                this.effectiveMaxSpeed = MAX_SPEED;
+            }
+            // Square packets always start with 0 speed and accelerate
+        } else if (packetShape == PacketAndPortShape.TRIANGLE) {
+            if (isCompatible) {
+                this.effectiveMaxSpeed = MAX_SPEED;
+                this.currentSpeed = MAX_SPEED; // Start at max speed
+            } else { // Incompatible
+                this.effectiveMaxSpeed = MAX_SPEED;
+                // Starts at 0 speed and accelerates
+            }
+        }
+        // Other packet types (if any) will use default MAX_SPEED and 0 start currentSpeed
     }
 
     /**
@@ -247,7 +274,7 @@ public class Packet {
             // GameModel will set speed to 0 upon arrival.
             if (progressOnWire < 1.0) {
                 currentSpeed += ACCELERATION * speedFactor;
-                if (currentSpeed > MAX_SPEED) currentSpeed = MAX_SPEED;
+                if (currentSpeed > this.effectiveMaxSpeed) currentSpeed = this.effectiveMaxSpeed;
             }
             // If progressOnWire is >= 1.0, it means packet has arrived or overshot.
             // Speed should be 0, which GameModel/arrival logic handles.
