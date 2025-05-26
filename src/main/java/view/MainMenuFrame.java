@@ -8,8 +8,8 @@ import utils.SoundManager;
 
 public class MainMenuFrame extends JFrame implements ActionListener {
 
-    private JButton level1Button;
-    private JButton level2Button;
+    private JButton playGameButton;
+    private JButton settingsButton;
     private JButton exitButton;
 
     public MainMenuFrame() {
@@ -19,21 +19,21 @@ public class MainMenuFrame extends JFrame implements ActionListener {
         setLocationRelativeTo(null);
         setLayout(new GridLayout(3, 1, 10, 10)); // 3 rows, 1 col, with gaps
 
-        level1Button = new JButton("Level 1");
-        level2Button = new JButton("Level 2");
+        playGameButton = new JButton("Play Game");
+        settingsButton = new JButton("Settings");
         exitButton = new JButton("Exit");
 
-        level1Button.addActionListener(this);
-        level2Button.addActionListener(this);
+        playGameButton.addActionListener(this);
+        settingsButton.addActionListener(this);
         exitButton.addActionListener(this);
         
         // Add some padding around the buttons
         JPanel panel1 = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        panel1.add(level1Button);
+        panel1.add(playGameButton);
         add(panel1);
 
         JPanel panel2 = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        panel2.add(level2Button);
+        panel2.add(settingsButton);
         add(panel2);
 
         JPanel panel3 = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -45,19 +45,18 @@ public class MainMenuFrame extends JFrame implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == level1Button) {
-            SoundManager.stopSound(SoundManager.SoundEffect.BACKGROUND_MUSIC);
-            // Launch Level 1 Frame
+        if (e.getSource() == playGameButton) {
+            // Open LevelSelectionFrame
             SwingUtilities.invokeLater(() -> {
-                Level1Frame level1 = new Level1Frame();
-                level1.setVisible(true);
+                LevelSelectionFrame levelSelectionFrame = new LevelSelectionFrame(this);
+                levelSelectionFrame.setVisible(true);
+                this.setVisible(false);
             });
-        } else if (e.getSource() == level2Button) {
-            SoundManager.stopSound(SoundManager.SoundEffect.BACKGROUND_MUSIC);
-            // Launch Level 2 Frame
+        } else if (e.getSource() == settingsButton) {
+            // Open SettingsFrame
             SwingUtilities.invokeLater(() -> {
-                Level2Frame level2 = new Level2Frame();
-                level2.setVisible(true);
+                SettingsDialog settingsDialog = new SettingsDialog(this);
+                settingsDialog.setVisible(true);
             });
         } else if (e.getSource() == exitButton) {
             SoundManager.stopAllSounds();

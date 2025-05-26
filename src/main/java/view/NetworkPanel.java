@@ -529,9 +529,18 @@ public class NetworkPanel extends JPanel {
             this.controller // Pass the controller
         );
         
-        dialog.showDialog(); // Call the updated showDialog method
+        dialog.showDialog(); // This is now blocking as dialog is modal
         
-        // No longer need to handle restart/menu logic here, dialog handles it
+        // After dialog is closed, check action
+        if (dialog.isReturnToMenuClicked()) {
+            if (parentFrame instanceof Level1Frame) {
+                ((Level1Frame) parentFrame).returnToMainMenu();
+            } else if (parentFrame instanceof Level2Frame) {
+                ((Level2Frame) parentFrame).returnToMainMenu();
+            }
+        }
+        // Restart is handled by the dialog's button calling controller.restartLevel(), 
+        // which eventually calls GameModel.restartFromInitialSnapshot().
     }
 
 }

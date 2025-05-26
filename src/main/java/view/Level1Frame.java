@@ -2,6 +2,7 @@ package view;
 
 import controller.NetworkController;
 import model.*;
+import utils.SoundManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -12,8 +13,10 @@ import java.util.List;
 public class Level1Frame extends JFrame {
     private NetworkPanel networkPanel; // Only holds the panel
     private GameModel gameModel;
+    private JFrame mainMenuFrameRef; // Store reference to MainMenuFrame
 
-    public Level1Frame() {
+    public Level1Frame(JFrame mainMenuFrame) { // Accept MainMenuFrame reference
+        this.mainMenuFrameRef = mainMenuFrame;
         this.gameModel = new GameModel(60); // Level 1 uses a 60s GameModel
 
         // Create the Panel
@@ -37,12 +40,32 @@ public class Level1Frame extends JFrame {
         NetworkController controller = new NetworkController(this.gameModel, networkPanel);
         networkPanel.setController(controller); // Pass controller to panel
 
+        // Add Back to Menu button
+        JButton backToMenuButton = new JButton("Main Menu");
+        backToMenuButton.addActionListener(e -> {
+            returnToMainMenu();
+        });
+
+        // Panel for the back button, to be added to the top or bottom of the frame
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topPanel.add(backToMenuButton);
+        add(topPanel, BorderLayout.NORTH); // Add to the top
+
         setPreferredSize(new Dimension(1200, 800));
         pack();
         setLocationRelativeTo(null);
 
         networkPanel.updateStatsDisplay(); // Initial stats display
         networkPanel.requestFocusInWindow(); // Request focus for the panel
+    }
+
+    public void returnToMainMenu() {
+        SoundManager.stopAllSounds(); // Stop any game sounds
+        SoundManager.loopSound(SoundManager.SoundEffect.BACKGROUND_MUSIC); // Start menu music
+        this.dispose(); // Close this level frame
+        if (this.mainMenuFrameRef != null) {
+            this.mainMenuFrameRef.setVisible(true); // Show the original main menu
+        }
     }
 
     // --- Renamed setupInitialModel for clarity ---

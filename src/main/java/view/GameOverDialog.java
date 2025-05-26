@@ -4,17 +4,18 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import utils.SoundManager;
 
 /**
  * Dialog displayed when game over condition is met (packet loss > 50%)
  */
 public class GameOverDialog extends JDialog {
-    private boolean restartRequested = false;
-    private boolean returnToMenuRequested = false;
+    // private boolean restartRequested = false; // Not strictly needed if actions are direct
+    private boolean returnToMenuClicked = false; // Flag for panel to check
     private controller.NetworkController controller; // Store controller reference
     
     public GameOverDialog(Frame parent, double packetLossPercentage, int deliveredPackets, int lostPackets, int coins, controller.NetworkController controller) {
-        super(parent, "Game Over", false); // Make it non-modal
+        super(parent, "Game Over", true); // Make it MODAL to simplify flow
         this.controller = controller; // Store controller
         
         setupDialog(packetLossPercentage, deliveredPackets, lostPackets, coins);
@@ -83,12 +84,8 @@ public class GameOverDialog extends JDialog {
         menuButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                // Action is now handled by NetworkPanel after dialog is shown
-                // For now, also restarts level as placeholder
-                 if (GameOverDialog.this.controller != null) {
-                    GameOverDialog.this.controller.reDesignAction(); // Or a proper menu action
-                }
-                dispose();
+                returnToMenuClicked = true;
+                dispose(); // Dispose the GameOverDialog itself
             }
         });
         
@@ -107,18 +104,19 @@ public class GameOverDialog extends JDialog {
     }
     
     public boolean isRestartRequested() {
-        return restartRequested; // This might become less relevant for non-modal
+        // This can be inferred by controller action if dialog is modal
+        return false; // Or could be set if Try Again is clicked, if needed elsewhere
     }
     
-    public boolean isReturnToMenuRequested() {
-        return returnToMenuRequested; // This might become less relevant for non-modal
+    public boolean isReturnToMenuClicked() {
+        return returnToMenuClicked;
     }
     
     /**
-     * Shows the dialog (non-modal)
+     * Shows the dialog (modal)
      */
     public void showDialog() { // Return type void now
+        // For modal dialog, setVisible(true) will block until dialog is disposed.
         setVisible(true);
-        // For non-modal, we don't wait here. Actions are handled by buttons directly.
     }
 } 
