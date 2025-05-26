@@ -1,5 +1,6 @@
 package model;
 
+import utils.SoundManager; // Import SoundManager
 // import java.awt.Point;
 import java.awt.geom.Point2D; // Import Point2D
 
@@ -53,6 +54,8 @@ public class CollisionEvent {
         packet1.addNoise(noiseAmount);
         packet2.addNoise(noiseAmount);
         
+        SoundManager.playSound(SoundManager.SoundEffect.PACKET_DAMAGE); // Play damage sound
+
         // Apply small impact forces to push packets apart
         Point2D.Double p1Pos = packet1.getPosition();
         Point2D.Double p2Pos = packet2.getPosition();

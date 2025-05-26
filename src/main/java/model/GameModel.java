@@ -1,5 +1,7 @@
 package model;
 
+import utils.SoundManager;
+
 import java.awt.Point;
 import java.awt.geom.Point2D;
 import javax.swing.Timer;
@@ -280,6 +282,7 @@ public class GameModel {
                 packet.setState(PacketState.LOST);
                 packet.freeOriginPort(); // Free up the port it might have been using
                 networkModel.addLostPacket(packet); // This handles moving from active to lost
+                SoundManager.playSound(SoundManager.SoundEffect.PACKET_DAMAGE); // Play sound for these too
             }
         }
 
@@ -294,6 +297,7 @@ public class GameModel {
                         packet.setState(PacketState.LOST);
                         // These packets haven't used an origin port on a wire yet.
                         networkModel.addLostPacket(packet); // Add to global lost list
+                        SoundManager.playSound(SoundManager.SoundEffect.PACKET_DAMAGE); // And these
                     }
                 }
             }
@@ -571,6 +575,7 @@ public class GameModel {
                     if (packet.getOriginPort() != null) packet.getOriginPort().setInUse(false); 
                     if (!networkModel.getLostPackets().contains(packet)) {
                          networkModel.addLostPacket(packet);
+                         SoundManager.playSound(SoundManager.SoundEffect.PACKET_DAMAGE);
                     }
                     continue;
                 }
@@ -607,6 +612,7 @@ public class GameModel {
                 if (packet.getState() == PacketState.LOST) {
                     if (!networkModel.getLostPackets().contains(packet)) {
                         networkModel.addLostPacket(packet); 
+                        SoundManager.playSound(SoundManager.SoundEffect.PACKET_DAMAGE);
                     }
                     continue; 
                 }
@@ -634,6 +640,7 @@ public class GameModel {
                             packet.setKnockedOffWire(true); 
                             if (!networkModel.getLostPackets().contains(packet)) {
                                 networkModel.addLostPacket(packet);
+                                SoundManager.playSound(SoundManager.SoundEffect.PACKET_DAMAGE);
                             }
                         }
                         continue; 
@@ -652,6 +659,7 @@ public class GameModel {
                     packet.freeOriginPort(); 
                     if (!networkModel.getLostPackets().contains(packet)) {
                         networkModel.addLostPacket(packet);
+                        SoundManager.playSound(SoundManager.SoundEffect.PACKET_DAMAGE);
                     }
                     continue; 
                 }
@@ -661,6 +669,7 @@ public class GameModel {
                  if (packet.getState() == PacketState.LOST) { 
                     if (!networkModel.getLostPackets().contains(packet)) {
                         networkModel.addLostPacket(packet);
+                        SoundManager.playSound(SoundManager.SoundEffect.PACKET_DAMAGE);
                     }
                  }
             }

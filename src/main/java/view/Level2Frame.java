@@ -2,18 +2,18 @@ package view;
 
 import controller.NetworkController;
 import model.*;
+import java.awt.geom.Point2D;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainFrame2 extends JFrame {
+public class Level2Frame extends JFrame {
     private NetworkPanel networkPanel; // Only holds the panel
     private GameModel gameModel;
 
-    public MainFrame2() {
+    public Level2Frame() {
         this.gameModel = new GameModel();
 
         // Create the Panel
@@ -24,10 +24,10 @@ public class MainFrame2 extends JFrame {
         gameModel.setUpdateStatsCallback(() -> { if (networkPanel != null) networkPanel.updateStatsDisplay(); });
 
         // Setup the initial level/model
-        setupInitialModel(this.gameModel.getNetworkModel());
+        setupInitialModel_Level2(this.gameModel.getNetworkModel());
 
-        setTitle("Network System Simulator V2");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setTitle("Level 2 - Network System Simulator");
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Dispose instead of exit
         setLayout(new BorderLayout());
 
         // Add the NetworkPanel - it now contains everything (drawing + HUD)
@@ -45,8 +45,8 @@ public class MainFrame2 extends JFrame {
         networkPanel.requestFocusInWindow(); // Request focus for the panel
     }
 
-    // --- Keep setupInitialModel ---
-    private static void setupInitialModel(NetworkModel model) {
+    // --- Renamed setupInitialModel for clarity ---
+    private static void setupInitialModel_Level2(NetworkModel model) {
         if (model == null) return;
 
         // Create custom packets for sys1
@@ -64,38 +64,34 @@ public class MainFrame2 extends JFrame {
 
 
 
-        System.out.println("MainFrame: Creating SourceSystem with " + sys1Packets.size() + " initial packets");
+        System.out.println("Level2Frame: Creating SourceSystem with " + sys1Packets.size() + " initial packets");
 
-        ArrayList<Port> s1InPorts = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.SQUARE)
-        ));
-        ArrayList<Port> s1OutPorts = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE)));
+        ArrayList<Port> s1InPorts = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.TRIANGLE),
+        new Port(IOType.INPUT, PacketAndPortShape.SQUARE)));
+        ArrayList<Port> s1OutPorts = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.TRIANGLE),
+        new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE)));
         SourceNetworkSystem sys1 = new SourceNetworkSystem(
                 IndicatorState.OFF, new Point(50, 50), 120, 20, 80,
                 s1InPorts, s1OutPorts, sys1Packets
         );
         model.addSystem(sys1);
         
-        System.out.println("MainFrame: SourceSystem created with storage size: " + sys1.getSenderStorage().size());
+        System.out.println("Level2Frame: SourceSystem created with storage size: " + sys1.getSenderStorage().size());
 
-        ArrayList<Port> s2InPorts = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.SQUARE))); // Changed shape for variety
-        ArrayList<Port> s2OutPorts = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE))); // Changed shape for variety
+        ArrayList<Port> s2InPorts = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.TRIANGLE),
+                new Port(IOType.INPUT, PacketAndPortShape.SQUARE))); // Changed shape for variety
+        ArrayList<Port> s2OutPorts = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.TRIANGLE),
+                new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE))); // Changed shape for variety
         NonSourceNetworkSystem sys2 = new NonSourceNetworkSystem(
-                IndicatorState.OFF, new Point(350, 50), 110, 18, 70,
+                IndicatorState.OFF, new Point(350, 150), 110, 18, 70,
                 s2InPorts, s2OutPorts, 5
         );
         model.addSystem(sys2);
 
-        ArrayList<Port> s3InPorts = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.SQUARE))); // Changed shape for variety
-        ArrayList<Port> s3OutPorts = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE))); // Changed shape for variety
-        NonSourceNetworkSystem sys3 = new NonSourceNetworkSystem(
-                IndicatorState.OFF, new Point(350, 150), 110, 18, 70,
-                s3InPorts, s3OutPorts, 5
-        );
-        model.addSystem(sys3);
-
     }
 
-    // --- Keep main method ---
+    // --- main method removed, new entry point is MainMenuFrame.java ---
+    /*
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
@@ -103,8 +99,9 @@ public class MainFrame2 extends JFrame {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            MainFrame2 frame = new MainFrame2();
+            Level2Frame frame = new Level2Frame(); // Updated constructor call
             frame.setVisible(true);
         });
     }
+    */
 }

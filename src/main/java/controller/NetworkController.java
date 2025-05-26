@@ -2,6 +2,7 @@ package controller;
 
 import model.*;
 import view.NetworkPanel;
+import utils.SoundManager; // Import SoundManager
 import java.awt.geom.Point2D; // Import Point2D
 
 import java.awt.Color;
@@ -165,6 +166,7 @@ public class NetworkController extends MouseAdapter implements java.awt.event.Ke
                     StraightWire newWire = new StraightWire(sourcePort, destPort, Color.CYAN);
                     currentNetworkModel.addWire(newWire);
                     wireAdded = true;
+                    SoundManager.playSound(SoundManager.SoundEffect.WIRE_CONNECTED); // Play sound
                 } else {
                     System.out.println("Wire length limit exceeded.");
                 }

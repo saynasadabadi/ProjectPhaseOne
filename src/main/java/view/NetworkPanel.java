@@ -2,6 +2,7 @@ package view;
 
 import controller.NetworkController; // Will need controller for buttons
 import model.*;
+import utils.SoundManager; // Import SoundManager
 import java.awt.geom.Point2D; // Import Point2D
 
 import javax.swing.*;
@@ -517,6 +518,8 @@ public class NetworkPanel extends JPanel {
     private void showGameOverDialog(double lossPercentage, NetworkModel nm) {
         JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
         
+        SoundManager.playSound(SoundManager.SoundEffect.GAME_OVER); // Play sound when dialog is shown
+
         GameOverDialog dialog = new GameOverDialog(
             parentFrame, 
             lossPercentage, 
