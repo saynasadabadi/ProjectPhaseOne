@@ -19,6 +19,8 @@ public class Level1Frame extends JFrame {
         this.mainMenuFrameRef = mainMenuFrame;
         this.gameModel = new GameModel(60); // Level 1 uses a 60s GameModel
 
+        setUndecorated(true); // Make the frame undecorated (must be called before visible)
+
         // Create the Panel
         networkPanel = new NetworkPanel(this.gameModel);
 
@@ -29,8 +31,9 @@ public class Level1Frame extends JFrame {
         // Setup the initial level/model
         setupInitialModel_Level1(this.gameModel.getNetworkModel());
 
-        setTitle("Level 1 - Network System Simulator");
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Dispose instead of exit
+        setTitle("Level 1 - Network System Simulator"); // Title won't be visible on undecorated frame
+        setResizable(false); // Make frame not resizable
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // Disable 'X' button, use in-app button
         setLayout(new BorderLayout());
 
         // Add the NetworkPanel - it now contains everything (drawing + HUD)

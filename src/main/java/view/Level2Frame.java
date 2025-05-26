@@ -17,7 +17,9 @@ public class Level2Frame extends JFrame {
 
     public Level2Frame(JFrame mainMenuFrame) { // Accept MainMenuFrame reference
         this.mainMenuFrameRef = mainMenuFrame;
-        this.gameModel = new GameModel();
+        this.gameModel = new GameModel(30);
+
+        setUndecorated(true); // Make the frame undecorated (must be called before visible)
 
         // Create the Panel
         networkPanel = new NetworkPanel(this.gameModel);
@@ -29,8 +31,9 @@ public class Level2Frame extends JFrame {
         // Setup the initial level/model
         setupInitialModel_Level2(this.gameModel.getNetworkModel());
 
-        setTitle("Level 2 - Network System Simulator");
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Dispose instead of exit
+        setTitle("Level 2 - Network System Simulator"); // Title won't be visible on undecorated frame
+        setResizable(false); // Make frame not resizable
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // Disable 'X' button, use in-app button
         setLayout(new BorderLayout());
 
         // Add the NetworkPanel - it now contains everything (drawing + HUD)
