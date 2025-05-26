@@ -29,13 +29,13 @@ public class StraightWire extends Wire {
     private static Port determineSourcePort(Port p1, Port p2) {
         if (p1.getIoType() == IOType.OUTPUT) return p1;
         if (p2.getIoType() == IOType.OUTPUT) return p2;
-        return p1; // Default or error, though validation should prevent this
+        return p1;
     }
 
     private static Port determineDestinationPort(Port p1, Port p2) {
         if (p1.getIoType() == IOType.INPUT) return p1;
         if (p2.getIoType() == IOType.INPUT) return p2;
-        return p2; // Default or error
+        return p2;
     }
 
     public List<Port> getPorts() {
@@ -60,37 +60,37 @@ public class StraightWire extends Wire {
         double wireLength = getLength();
 
         if (wireLength < 0.0001) {
-            return 0.0; // Avoid division by zero for zero-length wire
+            return 0.0;
         }
 
-        // Vector from wire start to packet
+
         double Vwp_x = currentPacketPosition.x - wireStart.x;
         double Vwp_y = currentPacketPosition.y - wireStart.y;
 
-        // Vector representing the wire itself
+
         double Vwe_x = wireEnd.x - wireStart.x;
         double Vwe_y = wireEnd.y - wireStart.y;
 
-        // Project Vwp onto Vwe using dot product
+
         double dotProduct = Vwp_x * Vwe_x + Vwp_y * Vwe_y;
         double projectedLength = dotProduct / wireLength;
 
-        // Normalize to progress (0 to 1)
+
         double progress = projectedLength / wireLength;
-        return Math.max(0.0, Math.min(1.0, progress)); // Clamp progress
+        return Math.max(0.0, Math.min(1.0, progress));
     }
 
     @Override
     public Point2D.Double getSourceAbsolutePosition() {
         Port sourcePort = getSourcePort();
-        if (sourcePort == null || sourcePort.getAbsolutePosition() == null) return new Point2D.Double(0,0); // Should not happen with valid wire
+        if (sourcePort == null || sourcePort.getAbsolutePosition() == null) return new Point2D.Double(0,0);
         return new Point2D.Double(sourcePort.getAbsolutePosition().x, sourcePort.getAbsolutePosition().y);
     }
 
     @Override
     public Point2D.Double getDestinationAbsolutePosition() {
         Port destinationPort = getDestinationPort();
-        if (destinationPort == null || destinationPort.getAbsolutePosition() == null) return new Point2D.Double(0,0); // Should not happen
+        if (destinationPort == null || destinationPort.getAbsolutePosition() == null) return new Point2D.Double(0,0);
         return new Point2D.Double(destinationPort.getAbsolutePosition().x, destinationPort.getAbsolutePosition().y);
     }
 
@@ -99,14 +99,14 @@ public class StraightWire extends Wire {
         Point2D.Double p1 = getSourceAbsolutePosition();
         Point2D.Double p2 = getDestinationAbsolutePosition();
 
-        progress = Math.max(0.0, Math.min(1.0, progress)); // Clamp progress
+        progress = Math.max(0.0, Math.min(1.0, progress));
 
         double x = p1.x + (p2.x - p1.x) * progress;
         double y = p1.y + (p2.y - p1.y) * progress;
         return new Point2D.Double(x, y);
     }
 
-    // Method to check if a point is close to the wire segment
+
     public boolean isPointNearWire(Point2D.Double point, double maxDistance) {
         Point2D.Double p1 = getSourceAbsolutePosition();
         Point2D.Double p2 = getDestinationAbsolutePosition();
@@ -121,6 +121,6 @@ public class StraightWire extends Wire {
         } else if (ports.get(1).equals(knownPort)) {
             return ports.get(0);
         }
-        return null; // Should not happen if knownPort is one of this wire's ports
+        return null;
     }
 }

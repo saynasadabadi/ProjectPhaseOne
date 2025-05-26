@@ -10,16 +10,13 @@ public class SettingsDialog extends JDialog {
     private JSlider volumeSlider;
 
     public SettingsDialog(JFrame parent) {
-        super(parent, "Settings", true); // true for modal
-        setSize(300, 150);
+        super(parent, "Settings", true);        setSize(300, 150);
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout(10, 10));
 
-        // Volume Label
         JLabel volumeLabel = new JLabel("Volume:");
         volumeLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
-        // Volume Slider
         volumeSlider = new JSlider(JSlider.HORIZONTAL, 0, 100, SoundManager.getVolume());
         volumeSlider.setMajorTickSpacing(25);
         volumeSlider.setMinorTickSpacing(5);
@@ -28,8 +25,7 @@ public class SettingsDialog extends JDialog {
 
         volumeSlider.addChangeListener(e -> {
             JSlider source = (JSlider) e.getSource();
-            if (!source.getValueIsAdjusting()) { // Process final value
-                int volume = source.getValue();
+            if (!source.getValueIsAdjusting()) {                int volume = source.getValue();
                 SoundManager.setVolume(volume);
             }
         });
@@ -41,7 +37,6 @@ public class SettingsDialog extends JDialog {
 
         add(contentPanel, BorderLayout.CENTER);
 
-        // Close button
         JButton closeButton = new JButton("Close");
         closeButton.addActionListener(e -> dispose());
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));

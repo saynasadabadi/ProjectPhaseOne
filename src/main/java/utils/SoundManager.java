@@ -11,7 +11,7 @@ public class SoundManager {
         WIRE_CONNECTED("sounds/connect.wav"),
         LEVEL_END("sounds/level_end.wav"),
         PACKET_DAMAGE("sounds/damage.wav"),
-        GAME_OVER("sounds/game_over.wav"); // Added a specific game_over sound
+        GAME_OVER("sounds/game_over.wav");
 
         private final String filePath;
         private Clip clip;
@@ -39,25 +39,25 @@ public class SoundManager {
         }
     }
 
-    private static boolean soundEnabled = true; // Global toggle for sound
-    private static int masterVolumePercent = 80; // Default volume 80%
-    // Define a reasonable dB range for volume control
-    private static final float MIN_DB = -40.0f; // Or lower for complete silence, e.g., -80.0f for FloatControl. minimo
-    private static final float MAX_DB = 6.0206f;  // Maximum gain (can be clip-dependent, +6dB is common max)
+    private static boolean soundEnabled = true;
+    private static int masterVolumePercent = 80;
+
+    private static final float MIN_DB = -40.0f;
+    private static final float MAX_DB = 6.0206f;
 
     static {
-        // Pre-load all sound effects
+
         for (SoundEffect effect : SoundEffect.values()) {
             loadSound(effect);
         }
-        // Apply initial volume after loading
+
         setVolume(masterVolumePercent); 
     }
 
     private static void loadSound(SoundEffect effect) {
         if (!soundEnabled && effect != SoundEffect.BACKGROUND_MUSIC) { 
-             // Always try to load background music clip to get its controls later, even if sound is off initially
-             // but don't load others if sound is off.
+
+
         }
         try {
             URL soundURL = SoundManager.class.getClassLoader().getResource(effect.getFilePath());
@@ -69,7 +69,7 @@ public class SoundManager {
             Clip clip = AudioSystem.getClip();
             clip.open(audioIn);
             effect.setClip(clip);
-            // Apply current volume to newly loaded clip
+
             applyVolumeToClip(clip, masterVolumePercent);
         } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
             System.err.println("Error loading sound " + effect.getFilePath() + ": " + e.getMessage());
@@ -82,7 +82,7 @@ public class SoundManager {
             FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
             float range = MAX_DB - MIN_DB;
             float gain = MIN_DB + (range * (volumePercent / 100.0f));
-            gain = Math.min(Math.max(gain, gainControl.getMinimum()), gainControl.getMaximum()); // Clamp to clip's actual min/max
+            gain = Math.min(Math.max(gain, gainControl.getMinimum()), gainControl.getMaximum());
             gainControl.setValue(gain);
         }
     }
@@ -104,7 +104,7 @@ public class SoundManager {
     public static void playSound(SoundEffect effect) {
         if (!soundEnabled || !effect.isLoaded() || effect.getClip() == null) return;
         Clip clip = effect.getClip();
-        applyVolumeToClip(clip, masterVolumePercent); // Ensure volume is set before playing
+        applyVolumeToClip(clip, masterVolumePercent);
         if (clip.isRunning()) clip.stop();
         clip.setFramePosition(0);
         clip.start();
@@ -113,7 +113,7 @@ public class SoundManager {
     public static void loopSound(SoundEffect effect) {
         if (!soundEnabled || !effect.isLoaded() || effect.getClip() == null) return;
         Clip clip = effect.getClip();
-        applyVolumeToClip(clip, masterVolumePercent); // Ensure volume is set before looping
+        applyVolumeToClip(clip, masterVolumePercent);
         if (!clip.isRunning()) {
             clip.setFramePosition(0);
             clip.loop(Clip.LOOP_CONTINUOUSLY);
@@ -121,7 +121,7 @@ public class SoundManager {
     }
 
     public static void stopSound(SoundEffect effect) {
-        if (!effect.isLoaded() || effect.getClip() == null) return; // Allow stopping even if soundEnabled is false
+        if (!effect.isLoaded() || effect.getClip() == null) return;
         Clip clip = effect.getClip();
         if (clip.isRunning()) clip.stop();
     }
@@ -140,12 +140,12 @@ public class SoundManager {
         soundEnabled = enabled;
         if (!enabled) {
             stopAllSounds();
-        } else if (!oldState && enabled) { // If re-enabling sound
+        } else if (!oldState && enabled) {
             for (SoundEffect effect : SoundEffect.values()) {
                 if (!effect.isLoaded()) {
-                    loadSound(effect); // Try to load sounds that weren't loaded
+                    loadSound(effect);
                 } else {
-                    // For already loaded sounds, ensure volume is applied
+
                     applyVolumeToClip(effect.getClip(), masterVolumePercent);
                 }
             }

@@ -1,27 +1,20 @@
 package view;
 
-import controller.NetworkController; // Will need controller for buttons
-import model.*;
-import utils.SoundManager; // Import SoundManager
-import java.awt.geom.Point2D; // Import Point2D
-
+import controller.NetworkController;import model.*;
+import utils.SoundManager;import java.awt.geom.Point2D;
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import java.awt.*;
-import java.awt.event.ActionListener; // For button actions
-import java.awt.geom.RoundRectangle2D;
+import java.awt.event.ActionListener;import java.awt.geom.RoundRectangle2D;
 
 public class NetworkPanel extends JPanel {
     private GameModel gameModel;
-    private NetworkController controller; // Keep a reference to the controller
-
-    // --- Drawing State ---
+    private NetworkController controller;
     private transient Port firstPortForWire = null;
     private transient Point currentMouseForWire = null;
     private transient Color temporaryWireColor = Color.gray;
 
-    // --- HUD Components ---
     private JLabel statsLabel;
     private JProgressBar wireUsageBar;
     private JLabel wireLimitLabel;
@@ -35,30 +28,21 @@ public class NetworkPanel extends JPanel {
     private JLabel levelDurationInfoLabel;
     private boolean isSliderBeingAdjusted = false;
     
-    // Game over dialog tracking
-    // private boolean gameOverDialogShown = false; // No longer needed
 
     public NetworkPanel(GameModel model) {
         this.gameModel = model;
-        this.setLayout(new BorderLayout()); // Use BorderLayout for drawing area + HUD
-        this.setBackground(new Color(20, 25, 30));
+        this.setLayout(new BorderLayout());        this.setBackground(new Color(20, 25, 30));
 
-        initializeHud(); // Create and add the HUD
-
-        // --- Important for KeyListener ---
+        initializeHud();
         this.setFocusable(true);
         this.requestFocusInWindow();
     }
 
-    // Method to set the controller after both are created
     public void setController(NetworkController controller) {
         this.controller = controller;
-        // Add listeners *here* now that controller exists
         this.addMouseListener(controller);
         this.addMouseMotionListener(controller);
-        this.addKeyListener(controller); // Add key listener to the panel itself
-
-        // Add action listeners for buttons
+        this.addKeyListener(controller);
         executeButton.addActionListener(e -> {
             controller.toggleExecutionAction();
             this.requestFocusInWindow();
@@ -81,7 +65,6 @@ public class NetworkPanel extends JPanel {
 
 
     private void initializeHud() {
-        // --- Initialize UI components for HUD ---
         statsLabel = new JLabel("Packets: D 0 | L 0 | A 0", SwingConstants.CENTER);
         coinsLabel = new JLabel("Coins: 0", SwingConstants.CENTER);
         wireUsageBar = new JProgressBar(0, 100);
@@ -94,12 +77,10 @@ public class NetworkPanel extends JPanel {
         levelDurationInfoLabel.setFont(new Font("SansSerif", Font.PLAIN, 20));
         levelDurationInfoLabel.setForeground(Color.black);
 
-        timeSlider = new JSlider(0, 100, 0); // Will be updated dynamically
-        timeSlider.addChangeListener(e -> {
+        timeSlider = new JSlider(0, 100, 0);        timeSlider.addChangeListener(e -> {
             JSlider source = (JSlider) e.getSource();
             if (source.getValueIsAdjusting()) {
                 isSliderBeingAdjusted = true;
-                // Update display with time during dragging
                 double currentTime = (double) source.getValue() / gameModel.getMaxTimeSteps() * gameModel.getTimeLimitSeconds();
                 timeStepLabel.setText(String.format("Time: %.2fs / %.1fs", currentTime, gameModel.getTimeLimitSeconds()));
             } else {
@@ -120,23 +101,19 @@ public class NetworkPanel extends JPanel {
         tryAgainButton = new JButton("Try Again");
         tryAgainButton.setVisible(false);
         
-        // Initially hide time controls since game starts in design mode
         stepBackButton.setVisible(false);
         stepForwardButton.setVisible(false);
         timeSlider.setVisible(false);
         timeStepLabel.setVisible(false);
 
-        // --- Enhanced HUD Panel ---
         JPanel hudPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         hudPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-        // Row 0: Level Duration Info (New top row for issue 4)
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 3; gbc.anchor = GridBagConstraints.LINE_START;
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.insets = new Insets(0,0,5,0);
         hudPanel.add(levelDurationInfoLabel, gbc);
 
-        // Row 1: Time Control
         JPanel timeControlPanel = new JPanel(new BorderLayout(5, 0));
         timeControlPanel.add(stepBackButton, BorderLayout.WEST);
         timeControlPanel.add(timeSlider, BorderLayout.CENTER);
@@ -149,7 +126,6 @@ public class NetworkPanel extends JPanel {
         gbc.gridy = 2;
         hudPanel.add(timePanel, gbc);
 
-        // Row 2: Stats and Execute
         JPanel statsPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbcStats = new GridBagConstraints();
         gbcStats.gridx = 0; gbcStats.gridy = 0; gbcStats.weightx = 0.30; gbcStats.anchor = GridBagConstraints.LINE_START;
@@ -160,7 +136,6 @@ public class NetworkPanel extends JPanel {
         statsPanel.add(coinsLabel, gbcStats);
         gbcStats.gridx = 2; gbcStats.weightx = 0.20; gbcStats.anchor = GridBagConstraints.CENTER;
         
-        // Create a panel for execute and redesign buttons
         JPanel executePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
         executePanel.add(executeButton);
         executePanel.add(tryAgainButton);
@@ -175,19 +150,14 @@ public class NetworkPanel extends JPanel {
         gbc.gridy = 3; gbc.insets = new Insets(5,0,0,0);
         hudPanel.add(statsPanel, gbc);
 
-        // Add the HUD to the SOUTH region of the NetworkPanel
         this.add(hudPanel, BorderLayout.SOUTH);
     }
 
-    /**
-     * Updates all HUD components based on the current GameModel state.
-     */
-    public void updateStatsDisplay() {
+        public void updateStatsDisplay() {
         if (gameModel == null || gameModel.getNetworkModel() == null) return;
 
         NetworkModel nm = gameModel.getNetworkModel();
         
-        // --- Calculate Packet Stats --- 
         int notReleasedCount = 0;
         for (NetworkSystem system : nm.getSystems()) {
             if (system instanceof SourceNetworkSystem) {
@@ -233,16 +203,13 @@ public class NetworkPanel extends JPanel {
         double currentTime = gameModel.getCurrentTimeSeconds();
         double maxTime = gameModel.getTimeLimitSeconds();
         
-        // Update slider range if needed
         if (timeSlider.getMaximum() != maxSteps) {
             timeSlider.setMaximum(maxSteps);
         }
         
-        // Issue 3: Always show elapsed and total time for timeStepLabel
         timeStepLabel.setText(String.format("Elapsed: %.3fs / Total: %.1fs", currentTime, maxTime));
         timeStepLabel.setForeground(Color.WHITE);
 
-        // Still show GameOverDialog if game is over, but don't change timeStepLabel text for it
         if (gameModel.isGameOverTriggered() && gameModel.hasJustGotGameOver()) {
             gameModel.acknowledgeGameOver(); 
             SwingUtilities.invokeLater(() -> showGameOverDialog(lossPercentage, nm));
@@ -252,7 +219,6 @@ public class NetworkPanel extends JPanel {
             timeSlider.setValue(currentStep);
         }
 
-        // Set button text based on game state
         if (gameModel.isExecutingSnapshots()) {
             executeButton.setText("Executing...");
             executeButton.setEnabled(false);
@@ -267,25 +233,20 @@ public class NetworkPanel extends JPanel {
             executeButton.setEnabled(true);
         }
         
-        // Control button visibility based on game state
         tryAgainButton.setVisible(gameModel.isGameRunning());
         
-        // Disable/enable time control during execution (allow during pause)
         stepBackButton.setEnabled(!gameModel.isGameExecuting());
         stepForwardButton.setEnabled(!gameModel.isGameExecuting());
         timeSlider.setEnabled(!gameModel.isGameExecuting());
         
-        // Show/hide time controls based on game running state
         stepBackButton.setVisible(gameModel.isGameRunning());
         stepForwardButton.setVisible(gameModel.isGameRunning());
         timeSlider.setVisible(gameModel.isGameRunning());
         timeStepLabel.setVisible(gameModel.isGameRunning());
 
-        // Issue 4: Update Level Duration Info Label
         levelDurationInfoLabel.setText(String.format("Level Duration: %.1fs", gameModel.getTimeLimitSeconds()));
     }
 
-    // --- Drawing methods (Keep these, but they now draw in the CENTER) ---
     public void setFirstPortForWire(Port port) {
         if (this.firstPortForWire != null) {
             this.firstPortForWire.setSelectedForConnection(false);
@@ -306,27 +267,14 @@ public class NetworkPanel extends JPanel {
 
     @Override
     protected void paintComponent(Graphics g) {
-        super.paintComponent(g); // This now paints the background and HUD
-        Graphics2D g2d = (Graphics2D) g.create();
+        super.paintComponent(g);        Graphics2D g2d = (Graphics2D) g.create();
 
-        // --- IMPORTANT: Translate g2d if HUD is present ---
-        // We only want to draw the networwk in the 'center' area.
-        // However, since we're overriding paintComponent for the whole panel,
-        // we'll draw over the HUD unless we are careful.
-        // A simpler approach: Let the default paintComponent draw the background.
-        // We will draw *only* the network elements. They should appear in the center.
-        // We need to ensure the HUD is drawn *on top* or handled by layout manager.
-        // Since we added HUD to SOUTH, it *should* work, and paintComponent
-        // here will draw *before* the HUD, but in the CENTER area if we don't
-        // clear everything. Let's try drawing normally and see if layout handles it.
 
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2d.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 
-        // Fill background *again* to ensure network area is dark
         g2d.setColor(new Color(20, 25, 30));
-        g2d.fillRect(0, 0, getWidth(), getHeight()); // Fill the whole panel
-
+        g2d.fillRect(0, 0, getWidth(), getHeight());
         drawGrid(g2d);
 
         if (gameModel == null || gameModel.getNetworkModel() == null) {
@@ -336,7 +284,6 @@ public class NetworkPanel extends JPanel {
             return;
         }
 
-        // Show loading indicator during snapshot execution
         if (gameModel.isExecutingSnapshots()) {
             g2d.setColor(Color.YELLOW);
             g2d.setFont(new Font("SansSerif", Font.BOLD, 24));
@@ -368,19 +315,14 @@ public class NetworkPanel extends JPanel {
             }
         }
         
-        // Draw impact waves
         for (ImpactWave wave : gameModel.getActiveImpactWaves()) {
             drawImpactWave(g2d, wave);
         }
 
         g2d.dispose();
 
-        // We DO NOT call super.paintComponent() at the end here,
-        // because the layout manager handles drawing children (like the HUD).
-        // We *do* call it at the start to clear and setup.
     }
 
-    // --- Keep all existing draw* methods (drawGrid, drawNetworkSystem, drawPort, etc.) ---
     private void drawGrid(Graphics2D g2d) {
         g2d.setColor(new Color(40, 45, 50));
         int gridSize = 25;
@@ -481,24 +423,18 @@ public class NetworkPanel extends JPanel {
         Point2D.Double origin = wave.getOrigin();
         double radius = wave.getCurrentRadius();
         
-        // Calculate fade based on wave age and max radius
         double fadeRatio = Math.max(0.0, 1.0 - (radius / wave.getMaxRadius()));
-        int alpha = (int) (255 * fadeRatio * 0.6); // Max 60% opacity
-        
+        int alpha = (int) (255 * fadeRatio * 0.6);        
         if (alpha <= 0) return;
         
-        // Draw the wave as a circle with fading effect
-        Color waveColor = new Color(255, 255, 100, alpha); // Yellow with transparency
-        g2d.setColor(waveColor);
+        Color waveColor = new Color(255, 255, 100, alpha);        g2d.setColor(waveColor);
         
-        // Draw multiple concentric circles for wave effect
         g2d.setStroke(new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         int waveRadius = (int) radius;
         g2d.drawOval((int)Math.round(origin.getX()) - waveRadius, 
                      (int)Math.round(origin.getY()) - waveRadius, 
                      waveRadius * 2, waveRadius * 2);
         
-        // Inner wave with different opacity
         int innerAlpha = (int) (alpha * 0.5);
         if (innerAlpha > 0 && radius > 10) {
             Color innerWaveColor = new Color(255, 200, 50, innerAlpha);
@@ -509,29 +445,21 @@ public class NetworkPanel extends JPanel {
                          innerRadius * 2, innerRadius * 2);
         }
         
-        g2d.setStroke(new BasicStroke(1f)); // Reset stroke
-    }
+        g2d.setStroke(new BasicStroke(1f));    }
 
-    /**
-     * Shows the game over dialog and handles user response
-     */
-    private void showGameOverDialog(double lossPercentage, NetworkModel nm) {
+        private void showGameOverDialog(double lossPercentage, NetworkModel nm) {
         JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
         
-        SoundManager.playSound(SoundManager.SoundEffect.GAME_OVER); // Play sound when dialog is shown
-
+        SoundManager.playSound(SoundManager.SoundEffect.GAME_OVER);
         GameOverDialog dialog = new GameOverDialog(
             parentFrame, 
             lossPercentage, 
             nm.getDeliveredCount(), 
             nm.getLostCount(), 
             nm.getPlayerCoins(),
-            this.controller // Pass the controller
-        );
+            this.controller        );
         
-        dialog.showDialog(); // This is now blocking as dialog is modal
-        
-        // After dialog is closed, check action
+        dialog.showDialog();        
         if (dialog.isReturnToMenuClicked()) {
             if (parentFrame instanceof Level1Frame) {
                 ((Level1Frame) parentFrame).returnToMainMenu();
@@ -539,8 +467,6 @@ public class NetworkPanel extends JPanel {
                 ((Level2Frame) parentFrame).returnToMainMenu();
             }
         }
-        // Restart is handled by the dialog's button calling controller.restartLevel(), 
-        // which eventually calls GameModel.restartFromInitialSnapshot().
     }
 
 }

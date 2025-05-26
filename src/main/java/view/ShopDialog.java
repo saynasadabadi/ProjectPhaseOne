@@ -19,21 +19,17 @@ public class ShopDialog extends JDialog {
 
 
     public ShopDialog(JFrame parent, GameModel gameModel) {
-        super(parent, "فروشگاه (Shop)", true); // Modal dialog
-        this.gameModel = gameModel;
+        super(parent, " (Shop)", true);        this.gameModel = gameModel;
 
         setSize(400, 300);
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout());
 
-        // Coins display
         coinsLabel = new JLabel("Coins: " + gameModel.getCoins());
         coinsLabel.setHorizontalAlignment(SwingConstants.CENTER);
         add(coinsLabel, BorderLayout.NORTH);
 
-        // Power-ups panel
-        JPanel powerUpsPanel = new JPanel(new GridLayout(0, 1, 10, 10)); // Single column, spacing
-        powerUpsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JPanel powerUpsPanel = new JPanel(new GridLayout(0, 1, 10, 10));        powerUpsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JButton atarButton = createPowerUpButton(ATAR_NAME, ATAR_COST, "Disable Impact Waves for 10s");
         JButton airyamanButton = createPowerUpButton(AIRYAMAN_NAME, AIRYAMAN_COST, "Disable Packet Collisions for 5s");
@@ -45,15 +41,13 @@ public class ShopDialog extends JDialog {
 
         add(powerUpsPanel, BorderLayout.CENTER);
 
-        // Close button
         JButton closeButton = new JButton("Close & Resume Game");
         closeButton.addActionListener(e -> dispose());
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         bottomPanel.add(closeButton);
         add(bottomPanel, BorderLayout.SOUTH);
 
-        updateButtonStates(); // Initial check for button enabled state
-    }
+        updateButtonStates();    }
 
     private JButton createPowerUpButton(String name, int cost, String description) {
         JButton button = new JButton(String.format("<html>%s (%d Coins)<br><small>%s</small></html>", name, cost, description));
@@ -61,12 +55,8 @@ public class ShopDialog extends JDialog {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (gameModel.getCoins() >= cost) {
-                    gameModel.purchasePowerUp(name, cost); // Pass name and cost
-                    coinsLabel.setText("Coins: " + gameModel.getCoins());
-                    System.out.println(name + " bought!"); // Placeholder action
-                    updateButtonStates(); // Update button states after purchase
-                    // For now, no actual effect is implemented.
-                } else {
+                    gameModel.purchasePowerUp(name, cost);                    coinsLabel.setText("Coins: " + gameModel.getCoins());
+                    System.out.println(name + " bought!");                    updateButtonStates();                } else {
                     JOptionPane.showMessageDialog(ShopDialog.this,
                             "Not enough coins to purchase " + name + ".",
                             "Insufficient Coins",
@@ -78,14 +68,9 @@ public class ShopDialog extends JDialog {
     }
 
     private void updateButtonStates() {
-        // This method can be expanded later if power-ups have limited uses or other conditions
-        // For now, it just ensures buttons are disabled if the player can't afford them.
-        Component[] components = ((JPanel)getContentPane().getComponent(1)).getComponents(); // Assuming powerUpsPanel is the second component
-        for (Component component : components) {
+        Component[] components = ((JPanel)getContentPane().getComponent(1)).getComponents();        for (Component component : components) {
             if (component instanceof JButton) {
                 JButton button = (JButton) component;
-                // A bit of a hack to get the cost from the button text.
-                // Proper way would be to store cost with button or have specific update methods.
                 if (button.getText().contains(ATAR_NAME)) {
                     button.setEnabled(gameModel.getCoins() >= ATAR_COST);
                 } else if (button.getText().contains(AIRYAMAN_NAME)) {
