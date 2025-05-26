@@ -59,7 +59,7 @@ public class GameModel {
 
     // Backward compatibility constructor (default 60 seconds)
     public GameModel() {
-        this(25.0); // Default 60 seconds
+        this(10.0); // Default 60 seconds
     }
 
     // ... (Keep existing getters and setters: getNetworkModel, setNetworkModel, etc.) ...
@@ -269,6 +269,39 @@ public class GameModel {
             }
         }
         
+        // AFTER the loop, networkModel is in the state of maxTimeSteps
+        // Enforce the "end of time limit" rule: all undelivered packets become LOST.
+        System.out.println("Time limit reached at step " + currentTimeStep + ". Marking remaining undelivered packets as LOST.");
+
+        // Process active packets (on wire, in non-source systems, or arrived at port but not yet delivered)
+        List<Packet> activePacketsCopy = new ArrayList<>(networkModel.getPackets());
+        for (Packet packet : activePacketsCopy) {
+            if (packet.getState() != PacketState.DELIVERED) { // Should always be true for packets in active list
+                packet.setState(PacketState.LOST);
+                packet.freeOriginPort(); // Free up the port it might have been using
+                networkModel.addLostPacket(packet); // This handles moving from active to lost
+            }
+        }
+
+        // Process packets pending in source systems' senderStorage
+        for (NetworkSystem system : networkModel.getSystems()) {
+            if (system instanceof SourceNetworkSystem) {
+                SourceNetworkSystem sourceSystem = (SourceNetworkSystem) system;
+                // Drain the queue and add to lostPackets
+                while (!sourceSystem.getSenderStorage().isEmpty()) {
+                    Packet packet = sourceSystem.getSenderStorage().poll(); // Removes from queue
+                    if (packet != null) {
+                        packet.setState(PacketState.LOST);
+                        // These packets haven't used an origin port on a wire yet.
+                        networkModel.addLostPacket(packet); // Add to global lost list
+                    }
+                }
+            }
+        }
+
+        // Update the snapshot for maxTimeSteps with these final changes
+        history.put(maxTimeSteps, new NetworkModelSnapshot(networkModel));
+        
         // Mark snapshots as ready
         isExecutingSnapshots = false;
         snapshotsReady = true;
@@ -391,9 +424,13 @@ public class GameModel {
 
         if (history.containsKey(0)) {
             loadSnapshot(0); // This restores networkModel and sets currentTimeStep to 0
-            // Ensure currentTimeStep is explicitly 0, though loadSnapshot should handle it.
             this.currentTimeStep = 0; 
-            snapshotsReady = true; // Snapshots are considered ready as we have history
+            // After loading snapshot 0, which represents the initial configured state,
+            // explicitly call resetSimulation() to ensure all transient/sim-related lists are cleared.
+            if (this.networkModel != null) {
+                this.networkModel.resetSimulation();
+            }
+            snapshotsReady = true; 
         } else {
             // This is a problematic state - means we can't restart from snapshot 0.
             // Fallback to a full redesign perhaps, or log an error.

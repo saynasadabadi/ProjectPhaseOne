@@ -29,10 +29,9 @@ public class NetworkPanel extends JPanel {
     private JButton stepBackButton;
     private JButton stepForwardButton;
     private JButton executeButton;
-    private JButton tryAgainButton; // Renamed from reDesignButton
+    private JButton tryAgainButton;
     private JLabel timeStepLabel;
-    private JButton addSourceSystemButton;
-    private JButton addNonSourceSystemButton;
+    private JLabel levelDurationInfoLabel;
     private boolean isSliderBeingAdjusted = false;
     
     // Game over dialog tracking
@@ -59,20 +58,12 @@ public class NetworkPanel extends JPanel {
         this.addKeyListener(controller); // Add key listener to the panel itself
 
         // Add action listeners for buttons
-        addSourceSystemButton.addActionListener(e -> {
-            controller.addSourceSystemAction();
-            this.requestFocusInWindow(); // Regain focus
-        });
-        addNonSourceSystemButton.addActionListener(e -> {
-            controller.addNonSourceSystemAction();
-            this.requestFocusInWindow();
-        });
         executeButton.addActionListener(e -> {
             controller.toggleExecutionAction();
             this.requestFocusInWindow();
         });
-        tryAgainButton.addActionListener(e -> { // Changed from reDesignButton
-            controller.restartLevel(); // Changed action to restartLevel()
+        tryAgainButton.addActionListener(e -> {
+            controller.restartLevel();
             this.requestFocusInWindow();
         });
         stepBackButton.addActionListener(e -> {
@@ -98,6 +89,9 @@ public class NetworkPanel extends JPanel {
         wireUsageBar.setForeground(new Color(100, 255, 100));
         wireLimitLabel = new JLabel("Limit: 1000.0", SwingConstants.LEFT);
         timeStepLabel = new JLabel("Time: 0.0s / 0.0s", SwingConstants.CENTER);
+        levelDurationInfoLabel = new JLabel("Level Duration: 0.0s");
+        levelDurationInfoLabel.setFont(new Font("SansSerif", Font.PLAIN, 20));
+        levelDurationInfoLabel.setForeground(Color.black);
 
         timeSlider = new JSlider(0, 100, 0); // Will be updated dynamically
         timeSlider.addChangeListener(e -> {
@@ -122,10 +116,8 @@ public class NetworkPanel extends JPanel {
         stepBackButton = new JButton("<");
         stepForwardButton = new JButton(">");
         executeButton = new JButton("Execute");
-        tryAgainButton = new JButton("Try Again"); // Renamed from reDesignButton
-        tryAgainButton.setVisible(false); // Initially hidden, visibility managed by updateStatsDisplay
-        addSourceSystemButton = new JButton("Add Source");
-        addNonSourceSystemButton = new JButton("Add Non-Source");
+        tryAgainButton = new JButton("Try Again");
+        tryAgainButton.setVisible(false);
         
         // Initially hide time controls since game starts in design mode
         stepBackButton.setVisible(false);
@@ -138,23 +130,22 @@ public class NetworkPanel extends JPanel {
         GridBagConstraints gbc = new GridBagConstraints();
         hudPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-        // Row 0: Add Buttons
-        JPanel addButtonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        addButtonsPanel.add(addSourceSystemButton);
-        addButtonsPanel.add(addNonSourceSystemButton);
-        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 3; gbc.weightx = 1.0;
+        // Row 0: Level Duration Info (New top row for issue 4)
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 3; gbc.anchor = GridBagConstraints.LINE_START;
         gbc.fill = GridBagConstraints.HORIZONTAL; gbc.insets = new Insets(0,0,5,0);
-        hudPanel.add(addButtonsPanel, gbc);
+        hudPanel.add(levelDurationInfoLabel, gbc);
 
         // Row 1: Time Control
         JPanel timeControlPanel = new JPanel(new BorderLayout(5, 0));
         timeControlPanel.add(stepBackButton, BorderLayout.WEST);
         timeControlPanel.add(timeSlider, BorderLayout.CENTER);
         timeControlPanel.add(stepForwardButton, BorderLayout.EAST);
+
         JPanel timePanel = new JPanel(new BorderLayout());
+        timePanel.add(timeStepLabel, BorderLayout.NORTH);
         timePanel.add(timeControlPanel, BorderLayout.CENTER);
-        timePanel.add(timeStepLabel, BorderLayout.SOUTH);
-        gbc.gridy = 1;
+
+        gbc.gridy = 2;
         hudPanel.add(timePanel, gbc);
 
         // Row 2: Stats and Execute
@@ -171,7 +162,7 @@ public class NetworkPanel extends JPanel {
         // Create a panel for execute and redesign buttons
         JPanel executePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
         executePanel.add(executeButton);
-        executePanel.add(tryAgainButton); // Changed from reDesignButton
+        executePanel.add(tryAgainButton);
         statsPanel.add(executePanel, gbcStats);
         
         JPanel wirePanel = new JPanel(new BorderLayout(5,0));
@@ -180,7 +171,7 @@ public class NetworkPanel extends JPanel {
         wirePanel.add(wireUsageBar, BorderLayout.CENTER);
         gbcStats.gridx = 3; gbcStats.weightx = 0.30; gbcStats.anchor = GridBagConstraints.LINE_END;
         statsPanel.add(wirePanel, gbcStats);
-        gbc.gridy = 2; gbc.insets = new Insets(5,0,0,0);
+        gbc.gridy = 3; gbc.insets = new Insets(5,0,0,0);
         hudPanel.add(statsPanel, gbc);
 
         // Add the HUD to the SOUTH region of the NetworkPanel
@@ -195,11 +186,21 @@ public class NetworkPanel extends JPanel {
 
         NetworkModel nm = gameModel.getNetworkModel();
         
-        // Enhanced packet stats with loss percentage
+        // --- Calculate Packet Stats --- 
+        int notReleasedCount = 0;
+        for (NetworkSystem system : nm.getSystems()) {
+            if (system instanceof SourceNetworkSystem) {
+                notReleasedCount += ((SourceNetworkSystem) system).getSenderStorage().size();
+            }
+        }
+        int activeCount = nm.getPackets().size();
+        int deliveredCount = nm.getDeliveredCount();
+        int lostCount = nm.getLostCount();
+        int totalPackets = nm.getPackets().size() + notReleasedCount;
+
         double lossPercentage = gameModel.getPacketLossPercentage();
         String lossText = String.format("%.1f%%", lossPercentage);
         
-        // Color-code loss percentage - red if approaching danger zone
         if (lossPercentage > 40.0) {
             statsLabel.setForeground(Color.RED);
         } else if (lossPercentage > 25.0) {
@@ -208,8 +209,8 @@ public class NetworkPanel extends JPanel {
             statsLabel.setForeground(Color.WHITE);
         }
         
-        statsLabel.setText(String.format("Packets: D %d | L %d (%s) | A %d",
-                nm.getDeliveredCount(), nm.getLostCount(), lossText, nm.getPackets().size()));
+        statsLabel.setText(String.format("Packets: Total %d | Pending %d | Active %d | Delivered %d | Lost %d (%s)",
+                totalPackets, notReleasedCount, activeCount, deliveredCount, lostCount, lossText));
         
         coinsLabel.setText("Coins: " + nm.getPlayerCoins());
 
@@ -236,20 +237,14 @@ public class NetworkPanel extends JPanel {
             timeSlider.setMaximum(maxSteps);
         }
         
-        // Update time display with game over status
-        if (gameModel.isGameOverTriggered()) {
-            timeStepLabel.setText(String.format("GAME OVER - Loss: %.1f%% > 50%%", lossPercentage));
-            timeStepLabel.setForeground(Color.RED);
-            
-            // Show game over dialog if it just happened
-            if (gameModel.hasJustGotGameOver()) {
-                gameModel.acknowledgeGameOver(); // Acknowledge it so dialog doesn't re-show without a new event
-                SwingUtilities.invokeLater(() -> showGameOverDialog(lossPercentage, nm));
-            }
-        } else {
-            timeStepLabel.setText(String.format("Time: %.2fs / %.1fs", currentTime, maxTime));
-            timeStepLabel.setForeground(Color.WHITE);
-            // gameOverDialogShown = false; // No longer needed
+        // Issue 3: Always show elapsed and total time for timeStepLabel
+        timeStepLabel.setText(String.format("Elapsed: %.3fs / Total: %.1fs", currentTime, maxTime));
+        timeStepLabel.setForeground(Color.WHITE);
+
+        // Still show GameOverDialog if game is over, but don't change timeStepLabel text for it
+        if (gameModel.isGameOverTriggered() && gameModel.hasJustGotGameOver()) {
+            gameModel.acknowledgeGameOver(); 
+            SwingUtilities.invokeLater(() -> showGameOverDialog(lossPercentage, nm));
         }
         
         if (!isSliderBeingAdjusted && timeSlider.getValue() != currentStep) {
@@ -272,11 +267,7 @@ public class NetworkPanel extends JPanel {
         }
         
         // Control button visibility based on game state
-        tryAgainButton.setVisible(gameModel.isGameRunning()); // Changed from reDesignButton
-        
-        // Disable/enable design buttons - disabled whenever game is running (including pause)
-        addSourceSystemButton.setEnabled(!gameModel.isGameRunning());
-        addNonSourceSystemButton.setEnabled(!gameModel.isGameRunning());
+        tryAgainButton.setVisible(gameModel.isGameRunning());
         
         // Disable/enable time control during execution (allow during pause)
         stepBackButton.setEnabled(!gameModel.isGameExecuting());
@@ -288,6 +279,9 @@ public class NetworkPanel extends JPanel {
         stepForwardButton.setVisible(gameModel.isGameRunning());
         timeSlider.setVisible(gameModel.isGameRunning());
         timeStepLabel.setVisible(gameModel.isGameRunning());
+
+        // Issue 4: Update Level Duration Info Label
+        levelDurationInfoLabel.setText(String.format("Level Duration: %.1fs", gameModel.getTimeLimitSeconds()));
     }
 
     // --- Drawing methods (Keep these, but they now draw in the CENTER) ---

@@ -25,42 +25,6 @@ public class NetworkController extends MouseAdapter implements java.awt.event.Ke
         this.view = view;
     }
 
-    public void addSourceSystemAction() {
-        if (gameModel.isGameRunning()) {
-            System.out.println("Cannot add systems: Game is running.");
-            return;
-        }
-        NetworkModel currentNetworkModel = gameModel.getNetworkModel();
-        if (currentNetworkModel != null) {
-            Point newPos = new Point(50 + (currentNetworkModel.getSystems().size() % 6) * 150,
-                    50 + (currentNetworkModel.getSystems().size() / 6) * 150);
-            ArrayList<Port> inputs = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.SQUARE)));
-            ArrayList<Port> outputs = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE)));
-            ArrayList<Packet> initialPackets = new ArrayList<>();
-            initialPackets.add(new Packet(new Point2D.Double(0,0), PacketAndPortShape.SQUARE, 8));
-            SourceNetworkSystem newSys = new SourceNetworkSystem(IndicatorState.OFF, newPos, 100, 15, 60, inputs, outputs, initialPackets);
-            addNetworkSystem(newSys); // Use existing method
-            view.updateStatsDisplay();
-        }
-    }
-
-    public void addNonSourceSystemAction() {
-        if (gameModel.isGameRunning()) {
-            System.out.println("Cannot add systems: Game is running.");
-            return;
-        }
-        NetworkModel currentNetworkModel = gameModel.getNetworkModel();
-        if (currentNetworkModel != null) {
-            Point newPos = new Point(70 + (currentNetworkModel.getSystems().size() % 6) * 150,
-                    70 + (currentNetworkModel.getSystems().size() / 6) * 150);
-            ArrayList<Port> inputs = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.SQUARE)));
-            ArrayList<Port> outputs = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE)));
-            NonSourceNetworkSystem newSys = new NonSourceNetworkSystem(IndicatorState.OFF, newPos, 100, 15, 60, inputs, outputs, 5);
-            addNetworkSystem(newSys); // Use existing method
-            view.updateStatsDisplay();
-        }
-    }
-
     public void toggleExecutionAction() {
         if (!gameModel.isGameRunning()) {
             // Start execution
