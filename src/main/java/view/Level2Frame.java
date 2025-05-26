@@ -11,22 +11,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Level2Frame extends JFrame {
-    private NetworkPanel networkPanel; // Only holds the panel
+    private NetworkPanel networkPanel;
     private GameModel gameModel;
-    private JFrame mainMenuFrameRef; // Store reference to MainMenuFrame
-    private JButton shopButton; // Added shop button field
+    private JFrame mainMenuFrameRef;
+    private JButton shopButton;
 
-    public Level2Frame(JFrame mainMenuFrame) { // Accept MainMenuFrame reference
+    public Level2Frame(JFrame mainMenuFrame) {
         this.mainMenuFrameRef = mainMenuFrame;
-        this.gameModel = new GameModel(30); // Level 2 uses a 30s GameModel
+        this.gameModel = new GameModel(30);
 
-        setUndecorated(true); // Make the frame undecorated (must be called before visible)
+        setUndecorated(true);
 
-        // Create the Panel
+
         networkPanel = new NetworkPanel(this.gameModel);
 
-        // --- Set Callbacks to NetworkPanel ---
-        // Update shop button visibility when game state changes
+
+
         gameModel.setRepaintCallback(() -> {
             if (networkPanel != null) networkPanel.repaint();
             updateButtonStates(); 
@@ -36,49 +36,49 @@ public class Level2Frame extends JFrame {
             updateButtonStates(); 
         });
 
-        // Setup the initial level/model
+
         setupInitialModel_Level2(this.gameModel.getNetworkModel());
 
-        setTitle("Level 2 - Network System Simulator"); // Title won't be visible on undecorated frame
-        setResizable(false); // Make frame not resizable
-        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // Disable 'X' button, use in-app button
+        setTitle("Level 2 - Network System Simulator");
+        setResizable(false);
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         setLayout(new BorderLayout());
 
-        // Add the NetworkPanel - it now contains everything (drawing + HUD)
+
         add(networkPanel, BorderLayout.CENTER);
 
-        // Create Controller and link it to Panel
-        NetworkController controller = new NetworkController(this.gameModel, networkPanel);
-        networkPanel.setController(controller); // Pass controller to panel
 
-        // --- Top Panel for Main Menu and Shop buttons ---
+        NetworkController controller = new NetworkController(this.gameModel, networkPanel);
+        networkPanel.setController(controller);
+
+
         JButton backToMenuButton = new JButton("Main Menu");
         backToMenuButton.addActionListener(e -> returnToMainMenu());
 
         shopButton = new JButton("Shop (فروشگاه)");
         shopButton.addActionListener(e -> {
-            gameModel.openShop(); // Attempt to open the shop
-            if (gameModel.isShopOpen()) { // Check if shop actually opened
+            gameModel.openShop();
+            if (gameModel.isShopOpen()) {
                 ShopDialog shopDialog = new ShopDialog(this, gameModel);
-                shopDialog.setVisible(true); // This is modal, so it blocks until closed
-                gameModel.closeShop(); // This will handle resuming or keeping paused state
+                shopDialog.setVisible(true);
+                gameModel.closeShop();
             }
-            networkPanel.requestFocusInWindow(); // Return focus to panel for key listeners
+            networkPanel.requestFocusInWindow();
         });
-        shopButton.setVisible(false); // Initially hidden
+        shopButton.setVisible(false);
 
-        JPanel topPanel = new JPanel(new BorderLayout()); // Use BorderLayout for top panel
+        JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.add(backToMenuButton, BorderLayout.WEST);
         topPanel.add(shopButton, BorderLayout.EAST);
-        add(topPanel, BorderLayout.NORTH); // Add to the top
+        add(topPanel, BorderLayout.NORTH);
 
         setPreferredSize(new Dimension(1200, 800));
         pack();
         setLocationRelativeTo(null);
         
-        updateButtonStates(); // Initial button state update
-        networkPanel.updateStatsDisplay(); // Initial stats display
-        networkPanel.requestFocusInWindow(); // Request focus for the panel
+        updateButtonStates();
+        networkPanel.updateStatsDisplay();
+        networkPanel.requestFocusInWindow();
     }
 
     private void updateButtonStates() {
@@ -89,19 +89,19 @@ public class Level2Frame extends JFrame {
     }
 
     public void returnToMainMenu() {
-        SoundManager.stopAllSounds(); // Stop any game sounds
-        SoundManager.loopSound(SoundManager.SoundEffect.BACKGROUND_MUSIC); // Start menu music
-        this.dispose(); // Close this level frame
+        SoundManager.stopAllSounds();
+        SoundManager.loopSound(SoundManager.SoundEffect.BACKGROUND_MUSIC);
+        this.dispose();
         if (this.mainMenuFrameRef != null) {
-            this.mainMenuFrameRef.setVisible(true); // Show the original main menu
+            this.mainMenuFrameRef.setVisible(true);
         }
     }
 
-    // --- Renamed setupInitialModel for clarity ---
+
     private static void setupInitialModel_Level2(NetworkModel model) {
         if (model == null) return;
 
-        // Create custom packets for sys1
+
         ArrayList<Packet> sys1Packets = new ArrayList<>();
         sys1Packets.add(new Packet(new Point2D.Double(0,0), PacketAndPortShape.SQUARE, 12));
         sys1Packets.add(new Packet(new Point2D.Double(0,0), PacketAndPortShape.SQUARE, 12));
@@ -131,9 +131,9 @@ public class Level2Frame extends JFrame {
         System.out.println("Level2Frame: SourceSystem created with storage size: " + sys1.getSenderStorage().size());
 
         ArrayList<Port> s2InPorts = new ArrayList<>(List.of(new Port(IOType.INPUT, PacketAndPortShape.TRIANGLE),
-                new Port(IOType.INPUT, PacketAndPortShape.SQUARE))); // Changed shape for variety
+                new Port(IOType.INPUT, PacketAndPortShape.SQUARE)));
         ArrayList<Port> s2OutPorts = new ArrayList<>(List.of(new Port(IOType.OUTPUT, PacketAndPortShape.TRIANGLE),
-                new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE))); // Changed shape for variety
+                new Port(IOType.OUTPUT, PacketAndPortShape.SQUARE)));
         NonSourceNetworkSystem sys2 = new NonSourceNetworkSystem(
                 IndicatorState.OFF, new Point(350, 150), 110, 18, 70,
                 s2InPorts, s2OutPorts, 5
@@ -142,18 +142,6 @@ public class Level2Frame extends JFrame {
 
     }
 
-    // --- main method removed, new entry point is MainMenuFrame.java ---
-    /*
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            Level2Frame frame = new Level2Frame(); // Updated constructor call
-            frame.setVisible(true);
-        });
-    }
-    */
+
+    
 }

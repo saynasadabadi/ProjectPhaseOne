@@ -17,7 +17,7 @@ public class MainMenuFrame extends JFrame implements ActionListener {
         setSize(400, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        setLayout(new GridLayout(3, 1, 10, 10)); // 3 rows, 1 col, with gaps
+        setLayout(new GridLayout(3, 1, 10, 10));
 
         playGameButton = new JButton("Play Game");
         settingsButton = new JButton("Settings");
@@ -27,7 +27,7 @@ public class MainMenuFrame extends JFrame implements ActionListener {
         settingsButton.addActionListener(this);
         exitButton.addActionListener(this);
         
-        // Add some padding around the buttons
+
         JPanel panel1 = new JPanel(new FlowLayout(FlowLayout.CENTER));
         panel1.add(playGameButton);
         add(panel1);
@@ -46,14 +46,14 @@ public class MainMenuFrame extends JFrame implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == playGameButton) {
-            // Open LevelSelectionFrame
+
             SwingUtilities.invokeLater(() -> {
                 LevelSelectionFrame levelSelectionFrame = new LevelSelectionFrame(this);
                 levelSelectionFrame.setVisible(true);
                 this.setVisible(false);
             });
         } else if (e.getSource() == settingsButton) {
-            // Open SettingsFrame
+
             SwingUtilities.invokeLater(() -> {
                 SettingsDialog settingsDialog = new SettingsDialog(this);
                 settingsDialog.setVisible(true);
@@ -64,7 +64,7 @@ public class MainMenuFrame extends JFrame implements ActionListener {
         }
     }
 
-    // Main method for the entire application will be here
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {

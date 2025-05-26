@@ -2,8 +2,7 @@ package controller;
 
 import model.*;
 import view.NetworkPanel;
-import utils.SoundManager; // Import SoundManager
-import java.awt.geom.Point2D; // Import Point2D
+import utils.SoundManager;
 
 import java.awt.Color;
 import java.awt.Point;

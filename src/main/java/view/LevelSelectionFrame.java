@@ -19,7 +19,7 @@ public class LevelSelectionFrame extends JFrame implements ActionListener {
         this.parentMenu = parentMenu;
         setTitle("Select Level");
         setSize(350, 250);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Dispose this frame only
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(parentMenu);
         setLayout(new GridLayout(3, 1, 10, 10));
 
@@ -35,7 +35,7 @@ public class LevelSelectionFrame extends JFrame implements ActionListener {
         add(createButtonPanel(level2Button));
         add(createButtonPanel(backButton));
 
-        // When this frame closes, re-show the parent menu if it was hidden
+
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent e) {
@@ -48,7 +48,7 @@ public class LevelSelectionFrame extends JFrame implements ActionListener {
 
     private JPanel createButtonPanel(JButton button) {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        button.setPreferredSize(new Dimension(200, 40)); // Make buttons a bit larger
+        button.setPreferredSize(new Dimension(200, 40));
         panel.add(button);
         return panel;
     }
@@ -56,25 +56,25 @@ public class LevelSelectionFrame extends JFrame implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == level1Button) {
-            SoundManager.stopSound(SoundManager.SoundEffect.BACKGROUND_MUSIC); // Stop menu music
-            JFrame mainMenuRef = this.parentMenu; // Capture for lambda
+            SoundManager.stopSound(SoundManager.SoundEffect.BACKGROUND_MUSIC);
+            JFrame mainMenuRef = this.parentMenu;
             SwingUtilities.invokeLater(() -> {
-                Level1Frame level1 = new Level1Frame(mainMenuRef); // Pass MainMenuFrame reference
+                Level1Frame level1 = new Level1Frame(mainMenuRef);
                 level1.setVisible(true);
             });
-            this.dispose(); // Close level selection
+            this.dispose();
         } else if (e.getSource() == level2Button) {
-            SoundManager.stopSound(SoundManager.SoundEffect.BACKGROUND_MUSIC); // Stop menu music
-            JFrame mainMenuRef = this.parentMenu; // Capture for lambda
+            SoundManager.stopSound(SoundManager.SoundEffect.BACKGROUND_MUSIC);
+            JFrame mainMenuRef = this.parentMenu;
             SwingUtilities.invokeLater(() -> {
-                Level2Frame level2 = new Level2Frame(mainMenuRef); // Pass MainMenuFrame reference
+                Level2Frame level2 = new Level2Frame(mainMenuRef);
                 level2.setVisible(true);
             });
-            this.dispose(); // Close level selection
+            this.dispose();
         } else if (e.getSource() == backButton) {
-            this.dispose(); // Close this frame
+            this.dispose();
             if (parentMenu != null) {
-                parentMenu.setVisible(true); // Show main menu again
+                parentMenu.setVisible(true);
             }
         }
     }
