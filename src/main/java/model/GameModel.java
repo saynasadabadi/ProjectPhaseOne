@@ -52,6 +52,11 @@ public class GameModel {
     private boolean justGotGameOver = false; // To trigger dialog only once
     // --- End Collision System ---
 
+    // --- Shop State ---
+    private boolean shopOpen = false;
+    private boolean wasPlayingBeforeShop = false; // To remember state before shop opened
+    // --- End Shop State ---
+
     public GameModel(double timeLimitSeconds) {
         this.timeLimitSeconds = timeLimitSeconds;
         this.maxTimeSteps = (int) Math.ceil(timeLimitSeconds * TARGET_FPS);
@@ -170,6 +175,83 @@ public class GameModel {
         return new ArrayList<>(activeImpactWaves);
     }
     
+    public boolean isShopOpen() { // New getter
+        return shopOpen;
+    }
+
+    // --- Shop related methods ---
+    public int getCoins() {
+        if (networkModel != null) {
+            return networkModel.getPlayerCoins();
+        }
+        return 0;
+    }
+
+    public void purchasePowerUp(String powerUpName, int cost) {
+        if (networkModel != null && networkModel.getPlayerCoins() >= cost) {
+            networkModel.setPlayerCoins(networkModel.getPlayerCoins() - cost);
+            System.out.println("GameModel: Purchased " + powerUpName + " for " + cost + " coins. Remaining: " + networkModel.getPlayerCoins());
+            // Actual power-up effect logic will be added later.
+            if (updateStatsCallback != null) {
+                updateStatsCallback.run();
+            }
+        } else {
+            System.out.println("GameModel: Not enough coins or network model not available for purchase.");
+        }
+    }
+
+    public void openShop() {
+        // Allow opening if game has started, snapshots are ready, shop isn't already open, and not game over.
+        if (gameRunning && snapshotsReady && !shopOpen && !gameOverTriggered) {
+            this.wasPlayingBeforeShop = !this.gamePaused; // True if it was playing (not paused)
+
+            if (this.wasPlayingBeforeShop) { // If it was actively playing
+                if (gameLoopTimer != null) {
+                    gameLoopTimer.stop();
+                }
+                this.gamePaused = true; // Manually pause it
+                System.out.println("GameModel: Game paused for shop.");
+            }
+            // If it was already paused (e.g., user clicked Pause, or after snapshot execution before Resume), gamePaused remains true.
+
+            this.shopOpen = true;
+            System.out.println("GameModel: Shop opened.");
+
+            // Notify UI to update (e.g., button states might change)
+            if (updateStatsCallback != null) {
+                updateStatsCallback.run();
+            }
+        } else {
+            System.out.println("GameModel: Shop cannot be opened. Conditions: gameRunning=" + gameRunning +
+                               ", snapshotsReady=" + snapshotsReady + ", shopOpen=" + shopOpen + ", gameOverTriggered=" + gameOverTriggered);
+        }
+    }
+
+    public void closeShop() {
+        if (this.shopOpen) {
+            this.shopOpen = false; // Mark shop as closed first
+
+            if (this.wasPlayingBeforeShop) { // If it was playing before shop opened
+                this.gamePaused = false; // Manually resume it
+                if (gameLoopTimer != null) {
+                    gameLoopTimer.start();
+                }
+                lastUpdateTimeNanos = System.nanoTime(); // Reset timing to avoid large delta
+                System.out.println("GameModel: Game resumed after shop.");
+            }
+            // If it was paused before the shop, it remains paused (gamePaused is still true).
+
+            System.out.println("GameModel: Shop closed.");
+            this.wasPlayingBeforeShop = false; // Reset for next time
+
+            // Notify UI to update
+            if (updateStatsCallback != null) {
+                updateStatsCallback.run();
+            }
+        }
+    }
+    // --- End Shop related methods ---
+
     // --- End Getters/Setters ---
 
     public boolean isNetworkModelValidForStart() {
@@ -452,8 +534,8 @@ public class GameModel {
      * Steps the simulation forward by one step. Used for manual control.
      */
     public void timeStepForward() {
-        if (currentTimeStep < maxTimeSteps) {
-            goToTimeStep(currentTimeStep + 1);
+        if (gameRunning && gamePaused && snapshotsReady && !isTimeScrubbing && !shopOpen) {
+            goToTimeStep(Math.min(maxTimeSteps, currentTimeStep + 1));
         }
     }
 
@@ -461,8 +543,8 @@ public class GameModel {
      * Steps the simulation backward by one step. Used for manual control.
      */
     public void timeStepBackward() {
-        if (currentTimeStep > 0) {
-            goToTimeStep(currentTimeStep - 1);
+        if (gameRunning && gamePaused && snapshotsReady && !isTimeScrubbing && !shopOpen) {
+            goToTimeStep(Math.max(0, currentTimeStep - 1));
         }
     }
 
@@ -471,26 +553,30 @@ public class GameModel {
      * @param targetStep The desired time step.
      */
     public void goToTimeStep(int targetStep) {
-        if (!snapshotsReady) {
-            System.out.println("Snapshots not ready yet!");
-            return;
-        }
-        
-        // Pause automatic execution for manual navigation
-        boolean wasExecuting = gameRunning && !gamePaused;
-        if (wasExecuting) {
-            pauseExecution();
-        }
-        isTimeScrubbing = true;
+        if (gameRunning && gamePaused && snapshotsReady && !shopOpen) {
+            if (targetStep >= 0 && targetStep <= maxTimeSteps) {
+                if (!snapshotsReady) {
+                    System.out.println("Snapshots not ready yet!");
+                    return;
+                }
+                
+                // Pause automatic execution for manual navigation
+                boolean wasExecuting = gameRunning && !gamePaused;
+                if (wasExecuting) {
+                    pauseExecution();
+                }
+                isTimeScrubbing = true;
 
-        targetStep = Math.max(0, Math.min(maxTimeSteps, targetStep));
-        
-        // Load the pre-computed snapshot
-        loadSnapshot(targetStep);
-        
-        System.out.println("Loaded snapshot for time step: " + targetStep);
-        if (repaintCallback != null) repaintCallback.run();
-        if (updateStatsCallback != null) updateStatsCallback.run();
+                targetStep = Math.max(0, Math.min(maxTimeSteps, targetStep));
+                
+                // Load the pre-computed snapshot
+                loadSnapshot(targetStep);
+                
+                System.out.println("Loaded snapshot for time step: " + targetStep);
+                if (repaintCallback != null) repaintCallback.run();
+                if (updateStatsCallback != null) updateStatsCallback.run();
+            }
+        }
     }
     
     /**
@@ -775,7 +861,8 @@ public class GameModel {
      * Pauses the execution without stopping the timer.
      */
     public void pauseExecution() {
-        if (gameRunning && !gamePaused) {
+        if (!snapshotsReady || !gameRunning || shopOpen) return;
+        if (!gamePaused) {
             gamePaused = true;
             if (gameLoopTimer != null) {
                 gameLoopTimer.stop();
@@ -790,7 +877,8 @@ public class GameModel {
      * Resumes the execution from pause.
      */
     public void resumeExecution() {
-        if (gameRunning && gamePaused && snapshotsReady) {
+        if (!snapshotsReady || !gameRunning || shopOpen) return;
+        if (gamePaused) {
             gamePaused = false;
             if (gameLoopTimer != null) {
                 gameLoopTimer.start();

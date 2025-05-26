@@ -207,7 +207,7 @@ public class NetworkPanel extends JPanel {
         } else if (lossPercentage > 25.0) {
             statsLabel.setForeground(Color.ORANGE);
         } else {
-            statsLabel.setForeground(Color.WHITE);
+            statsLabel.setForeground(Color.RED);
         }
         
         statsLabel.setText(String.format("Packets: Total %d | Pending %d | Active %d | Delivered %d | Lost %d (%s)",

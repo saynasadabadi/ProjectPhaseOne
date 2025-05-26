@@ -14,6 +14,7 @@ public class Level1Frame extends JFrame {
     private NetworkPanel networkPanel; // Only holds the panel
     private GameModel gameModel;
     private JFrame mainMenuFrameRef; // Store reference to MainMenuFrame
+    private JButton shopButton; // Added shop button field
 
     public Level1Frame(JFrame mainMenuFrame) { // Accept MainMenuFrame reference
         this.mainMenuFrameRef = mainMenuFrame;
@@ -25,8 +26,15 @@ public class Level1Frame extends JFrame {
         networkPanel = new NetworkPanel(this.gameModel);
 
         // --- Set Callbacks to NetworkPanel ---
-        gameModel.setRepaintCallback(() -> { if (networkPanel != null) networkPanel.repaint(); });
-        gameModel.setUpdateStatsCallback(() -> { if (networkPanel != null) networkPanel.updateStatsDisplay(); });
+        // Update shop button visibility when game state changes
+        gameModel.setRepaintCallback(() -> {
+            if (networkPanel != null) networkPanel.repaint();
+            updateButtonStates(); 
+        });
+        gameModel.setUpdateStatsCallback(() -> {
+            if (networkPanel != null) networkPanel.updateStatsDisplay();
+            updateButtonStates(); 
+        });
 
         // Setup the initial level/model
         setupInitialModel_Level1(this.gameModel.getNetworkModel());
@@ -43,23 +51,41 @@ public class Level1Frame extends JFrame {
         NetworkController controller = new NetworkController(this.gameModel, networkPanel);
         networkPanel.setController(controller); // Pass controller to panel
 
-        // Add Back to Menu button
+        // --- Top Panel for Main Menu and Shop buttons ---
         JButton backToMenuButton = new JButton("Main Menu");
-        backToMenuButton.addActionListener(e -> {
-            returnToMainMenu();
-        });
+        backToMenuButton.addActionListener(e -> returnToMainMenu());
 
-        // Panel for the back button, to be added to the top or bottom of the frame
-        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        topPanel.add(backToMenuButton);
+        shopButton = new JButton("Shop (فروشگاه)");
+        shopButton.addActionListener(e -> {
+            gameModel.openShop(); // Attempt to open the shop
+            if (gameModel.isShopOpen()) { // Check if shop actually opened
+                ShopDialog shopDialog = new ShopDialog(this, gameModel);
+                shopDialog.setVisible(true); // This is modal, so it blocks until closed
+                gameModel.closeShop(); // This will handle resuming or keeping paused state
+            }
+            networkPanel.requestFocusInWindow(); // Return focus to panel for key listeners
+        });
+        shopButton.setVisible(false); // Initially hidden
+
+        JPanel topPanel = new JPanel(new BorderLayout()); // Use BorderLayout for top panel
+        topPanel.add(backToMenuButton, BorderLayout.WEST);
+        topPanel.add(shopButton, BorderLayout.EAST);
         add(topPanel, BorderLayout.NORTH); // Add to the top
 
         setPreferredSize(new Dimension(1200, 800));
         pack();
         setLocationRelativeTo(null);
 
+        updateButtonStates(); // Initial button state update
         networkPanel.updateStatsDisplay(); // Initial stats display
         networkPanel.requestFocusInWindow(); // Request focus for the panel
+    }
+
+    private void updateButtonStates() {
+        if (gameModel != null && shopButton != null) {
+            boolean visible = gameModel.isGameRunning() && gameModel.areSnapshotsReady() && !gameModel.isGameOverTriggered();
+            shopButton.setVisible(visible);
+        }
     }
 
     public void returnToMainMenu() {
