@@ -17,8 +17,7 @@ public class GameModel {
     private NetworkModel networkModel;
     private Timer gameLoopTimer;
     private boolean gameRunning = false;
-    private boolean gamePaused = false; // New field to track pause state
-    private Runnable repaintCallback;
+    private boolean gamePaused = false;    private Runnable repaintCallback;
     private Runnable updateStatsCallback;
     private double temporaryWireLength = 0.0;
 
@@ -26,37 +25,18 @@ public class GameModel {
     public static final int GAME_UPDATE_DELAY = 1000 / TARGET_FPS;
     private long lastUpdateTimeNanos = 0;
 
-    // --- Temporal Progress ---
     private int currentTimeStep = 0;
-    private final double timeLimitSeconds; // Time limit in seconds
-    private final int maxTimeSteps; // Calculated based on time limit and FPS
-    private boolean isTimeScrubbing = false; // Flag to indicate if we are manually controlling time
-    private Map<Integer, NetworkModelSnapshot> history = new HashMap<>(); // To store snapshots
-    // --- End Temporal Progress ---
-
-    // --- Snapshot Execution State ---
-    private boolean isExecutingSnapshots = false; // True when creating all snapshots
-    private boolean snapshotsReady = false; // True when all snapshots are created
-    // --- End Snapshot Execution State ---
-
-    // --- Collision and Impact Wave System ---
+    private final double timeLimitSeconds;    private final int maxTimeSteps;    private boolean isTimeScrubbing = false;    private Map<Integer, NetworkModelSnapshot> history = new HashMap<>();
+    private boolean isExecutingSnapshots = false;    private boolean snapshotsReady = false;
     private List<ImpactWave> activeImpactWaves = new ArrayList<>();
     private boolean collisionDetectionEnabled = true;
     private boolean impactWavesEnabled = true;
     private long lastCollisionCheckTime = 0;
-    private static final long COLLISION_CHECK_INTERVAL = 16; // Check every ~16ms (60fps)
-    
-    // Game Over tracking
+    private static final long COLLISION_CHECK_INTERVAL = 16;    
     private boolean gameOverTriggered = false;
-    private double packetLossThreshold = 50.0; // 50% loss triggers game over
-    private boolean justGotGameOver = false; // To trigger dialog only once
-    // --- End Collision System ---
-
-    // --- Shop State ---
+    private double packetLossThreshold = 50.0;    private boolean justGotGameOver = false;
     private boolean shopOpen = false;
-    private boolean wasPlayingBeforeShop = false; // To remember state before shop opened
-    // --- End Shop State ---
-
+    private boolean wasPlayingBeforeShop = false;
     public GameModel(double timeLimitSeconds) {
         this.timeLimitSeconds = timeLimitSeconds;
         this.maxTimeSteps = (int) Math.ceil(timeLimitSeconds * TARGET_FPS);
@@ -64,12 +44,9 @@ public class GameModel {
         this.temporaryWireLength = 0.0;
     }
 
-    // Backward compatibility constructor (default 60 seconds)
     public GameModel() {
-        this(10.0); // Default 60 seconds
-    }
+        this(10.0);    }
 
-    // ... (Keep existing getters and setters: getNetworkModel, setNetworkModel, etc.) ...
     public NetworkModel getNetworkModel() {
         return networkModel;
     }
@@ -142,7 +119,6 @@ public class GameModel {
         return snapshotsReady;
     }
     
-    // --- New collision and game over methods ---
     
     public boolean isGameOverTriggered() {
         return gameOverTriggered;
@@ -175,11 +151,9 @@ public class GameModel {
         return new ArrayList<>(activeImpactWaves);
     }
     
-    public boolean isShopOpen() { // New getter
-        return shopOpen;
+    public boolean isShopOpen() {        return shopOpen;
     }
 
-    // --- Shop related methods ---
     public int getCoins() {
         if (networkModel != null) {
             return networkModel.getPlayerCoins();
@@ -191,7 +165,6 @@ public class GameModel {
         if (networkModel != null && networkModel.getPlayerCoins() >= cost) {
             networkModel.setPlayerCoins(networkModel.getPlayerCoins() - cost);
             System.out.println("GameModel: Purchased " + powerUpName + " for " + cost + " coins. Remaining: " + networkModel.getPlayerCoins());
-            // Actual power-up effect logic will be added later.
             if (updateStatsCallback != null) {
                 updateStatsCallback.run();
             }
@@ -201,23 +174,17 @@ public class GameModel {
     }
 
     public void openShop() {
-        // Allow opening if game has started, snapshots are ready, shop isn't already open, and not game over.
         if (gameRunning && snapshotsReady && !shopOpen && !gameOverTriggered) {
-            this.wasPlayingBeforeShop = !this.gamePaused; // True if it was playing (not paused)
-
-            if (this.wasPlayingBeforeShop) { // If it was actively playing
-                if (gameLoopTimer != null) {
+            this.wasPlayingBeforeShop = !this.gamePaused;
+            if (this.wasPlayingBeforeShop) {                if (gameLoopTimer != null) {
                     gameLoopTimer.stop();
                 }
-                this.gamePaused = true; // Manually pause it
-                System.out.println("GameModel: Game paused for shop.");
+                this.gamePaused = true;                System.out.println("GameModel: Game paused for shop.");
             }
-            // If it was already paused (e.g., user clicked Pause, or after snapshot execution before Resume), gamePaused remains true.
 
             this.shopOpen = true;
             System.out.println("GameModel: Shop opened.");
 
-            // Notify UI to update (e.g., button states might change)
             if (updateStatsCallback != null) {
                 updateStatsCallback.run();
             }
@@ -229,33 +196,23 @@ public class GameModel {
 
     public void closeShop() {
         if (this.shopOpen) {
-            this.shopOpen = false; // Mark shop as closed first
-
-            if (this.wasPlayingBeforeShop) { // If it was playing before shop opened
-                this.gamePaused = false; // Manually resume it
-                if (gameLoopTimer != null) {
+            this.shopOpen = false;
+            if (this.wasPlayingBeforeShop) {                this.gamePaused = false;                if (gameLoopTimer != null) {
                     gameLoopTimer.start();
                 }
-                lastUpdateTimeNanos = System.nanoTime(); // Reset timing to avoid large delta
-                System.out.println("GameModel: Game resumed after shop.");
+                lastUpdateTimeNanos = System.nanoTime();                System.out.println("GameModel: Game resumed after shop.");
             }
-            // If it was paused before the shop, it remains paused (gamePaused is still true).
 
             System.out.println("GameModel: Shop closed.");
-            this.wasPlayingBeforeShop = false; // Reset for next time
-
-            // Notify UI to update
+            this.wasPlayingBeforeShop = false;
             if (updateStatsCallback != null) {
                 updateStatsCallback.run();
             }
         }
     }
-    // --- End Shop related methods ---
 
-    // --- End Getters/Setters ---
 
     public boolean isNetworkModelValidForStart() {
-        // ... (Keep existing validation logic) ...
         if (networkModel == null || networkModel.getSystems().isEmpty()) {
             return false;
         }
@@ -266,8 +223,6 @@ public class GameModel {
                 return false;
             }
         }
-        // Check if any source system has packets - but don't add defaults here
-        // Initial packets should be set during system creation in MainFrame
         boolean hasSourceWithPackets = networkModel.getSystems().stream()
                 .filter(s -> s instanceof SourceNetworkSystem)
                 .anyMatch(s -> !((SourceNetworkSystem) s).getSenderStorage().isEmpty());
@@ -278,32 +233,24 @@ public class GameModel {
         return true;
     }
 
-    /**
-     * Starts the full simulation by pre-computing all snapshots (Execute button).
-     */
-    public boolean startExecution() {
+        public boolean startExecution() {
         if (gameRunning) return false;
         if (isNetworkModelValidForStart()) {
             gameRunning = true;
-            gamePaused = true; // Start in paused state
-            isExecutingSnapshots = true;
+            gamePaused = true;            isExecutingSnapshots = true;
             snapshotsReady = false;
             currentTimeStep = 0;
             history.clear();
-            gameOverTriggered = false; // Reset game over state
-            
-            // Show loading state
+            gameOverTriggered = false;            
             if (repaintCallback != null) repaintCallback.run();
             if (updateStatsCallback != null) updateStatsCallback.run();
             
-            // Pre-compute all snapshots in background thread
             new Thread(() -> {
                 try {
                     executeAllSnapshots();
                 } catch (Exception e) {
                     System.err.println("Error during snapshot execution: " + e.getMessage());
                     e.printStackTrace();
-                    // Reset state on error
                     isExecutingSnapshots = false;
                     snapshotsReady = false;
                     gameRunning = false;
@@ -320,96 +267,62 @@ public class GameModel {
         }
     }
     
-    /**
-     * Pre-computes all snapshots for the entire simulation.
-     */
-    private void executeAllSnapshots() {
+        private void executeAllSnapshots() {
         System.out.println("Pre-computing " + maxTimeSteps + " snapshots...");
         
-        // Reset to initial state
         networkModel.resetSimulation();
         prepareInitialPackets();
-        lastCollisionCheckTime = 0; // Reset collision check time for new snapshot generation
-        
-        // Store initial snapshot (step 0)
+        lastCollisionCheckTime = 0;        
         history.put(0, new NetworkModelSnapshot(networkModel));
         
-        // Simulate and store each step
         for (int step = 1; step <= maxTimeSteps; step++) {
-            updateGameLogic(false); // Simulate one step
-            history.put(step, new NetworkModelSnapshot(networkModel));
+            updateGameLogic(false);            history.put(step, new NetworkModelSnapshot(networkModel));
             
-            // Check for game over during simulation
             if (!gameOverTriggered && getPacketLossPercentage() > packetLossThreshold) {
                 gameOverTriggered = true;
-                justGotGameOver = true; // Set when game over first occurs
-                System.out.println("Game Over triggered at step " + step + " - Packet loss: " + String.format("%.1f%%", getPacketLossPercentage()));
-                // break; // Stop simulation early - let it complete for full history
+                justGotGameOver = true;                System.out.println("Game Over triggered at step " + step + " - Packet loss: " + String.format("%.1f%%", getPacketLossPercentage()));
             }
             
-            // Update progress occasionally
             if (step % (maxTimeSteps / 10) == 0) {
                 System.out.println("Snapshot progress: " + step + "/" + maxTimeSteps);
             }
         }
         
-        // AFTER the loop, networkModel is in the state of maxTimeSteps
-        // Enforce the "end of time limit" rule: all undelivered packets become LOST.
         System.out.println("Time limit reached at step " + currentTimeStep + ". Marking remaining undelivered packets as LOST.");
 
-        // Process active packets (on wire, in non-source systems, or arrived at port but not yet delivered)
         List<Packet> activePacketsCopy = new ArrayList<>(networkModel.getPackets());
         for (Packet packet : activePacketsCopy) {
-            if (packet.getState() != PacketState.DELIVERED) { // Should always be true for packets in active list
-                packet.setState(PacketState.LOST);
-                packet.freeOriginPort(); // Free up the port it might have been using
-                networkModel.addLostPacket(packet); // This handles moving from active to lost
-                SoundManager.playSound(SoundManager.SoundEffect.PACKET_DAMAGE); // Play sound for these too
-            }
+            if (packet.getState() != PacketState.DELIVERED) {                packet.setState(PacketState.LOST);
+                packet.freeOriginPort();                networkModel.addLostPacket(packet);                SoundManager.playSound(SoundManager.SoundEffect.PACKET_DAMAGE);            }
         }
 
-        // Process packets pending in source systems' senderStorage
         for (NetworkSystem system : networkModel.getSystems()) {
             if (system instanceof SourceNetworkSystem) {
                 SourceNetworkSystem sourceSystem = (SourceNetworkSystem) system;
-                // Drain the queue and add to lostPackets
                 while (!sourceSystem.getSenderStorage().isEmpty()) {
-                    Packet packet = sourceSystem.getSenderStorage().poll(); // Removes from queue
-                    if (packet != null) {
+                    Packet packet = sourceSystem.getSenderStorage().poll();                    if (packet != null) {
                         packet.setState(PacketState.LOST);
-                        // These packets haven't used an origin port on a wire yet.
-                        networkModel.addLostPacket(packet); // Add to global lost list
-                        SoundManager.playSound(SoundManager.SoundEffect.PACKET_DAMAGE); // And these
-                    }
+                        networkModel.addLostPacket(packet);                        SoundManager.playSound(SoundManager.SoundEffect.PACKET_DAMAGE);                    }
                 }
             }
         }
 
-        // Update the snapshot for maxTimeSteps with these final changes
         history.put(maxTimeSteps, new NetworkModelSnapshot(networkModel));
         
-        // Mark snapshots as ready
         isExecutingSnapshots = false;
         snapshotsReady = true;
-        currentTimeStep = 0; // Start at beginning
-        
-        // Restore to initial state
+        currentTimeStep = 0;        
         loadSnapshot(0);
         
         System.out.println("All snapshots ready! Total: " + history.size());
         
-        // Initialize the timer for automatic progression through snapshots
         initializeSnapshotTimer();
         
-        // Update UI
         if (repaintCallback != null) repaintCallback.run();
         if (updateStatsCallback != null) updateStatsCallback.run();
     }
 
-    /**
-     * Initializes the timer for automatic progression through snapshots.
-     */
-    private void initializeSnapshotTimer() {
+        private void initializeSnapshotTimer() {
         if (gameLoopTimer != null) {
             gameLoopTimer.stop();
         }
@@ -418,22 +331,17 @@ public class GameModel {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (gameRunning && !gamePaused && snapshotsReady) {
-                    // Advance to next snapshot
                     if (currentTimeStep < maxTimeSteps) { 
                         loadSnapshot(currentTimeStep + 1);
                         
-                        // Check for game over after loading the new step (during playback)
                         if (!gameOverTriggered && getPacketLossPercentage() > packetLossThreshold) {
                             gameOverTriggered = true;
-                            justGotGameOver = true; // Set when game over first occurs during playback
-                            System.out.println("Game Over triggered during playback at step " + currentTimeStep + " - Packet loss: " + String.format("%.1f%%", getPacketLossPercentage()));
+                            justGotGameOver = true;                            System.out.println("Game Over triggered during playback at step " + currentTimeStep + " - Packet loss: " + String.format("%.1f%%", getPacketLossPercentage()));
                         }
 
-                        // Update UI
                         if (repaintCallback != null) repaintCallback.run();
                         if (updateStatsCallback != null) updateStatsCallback.run();
                     } else {
-                        // End of simulation reached or game over, pause automatically
                         pauseExecution();
                     }
                 }
@@ -441,18 +349,12 @@ public class GameModel {
         });
     }
 
-    /**
-     * Stops the continuous simulation.
-     */
-    public void stopExecution() {
+        public void stopExecution() {
         if (gameRunning) {
             gameRunning = false;
-            gamePaused = false; // Reset pause state when stopping
-            if (gameLoopTimer != null) {
+            gamePaused = false;            if (gameLoopTimer != null) {
                 gameLoopTimer.stop();
             }
-            // Keep the last state when stopping, don't reset yet.
-            // Allow scrubbing from here.
             isTimeScrubbing = true;
             System.out.println("GameModel: Execution stopped at step " + currentTimeStep);
             if (repaintCallback != null) repaintCallback.run();
@@ -460,11 +362,7 @@ public class GameModel {
         }
     }
 
-    /**
-     * Stops execution and returns to design mode, clearing all snapshots and network state.
-     * This is the action for the "Re-Design" or a full reset to authoring mode.
-     */
-    public void reDesign() {
+        public void reDesign() {
         if (gameRunning) {
             gameRunning = false;
             if (gameLoopTimer != null) {
@@ -483,46 +381,30 @@ public class GameModel {
         activeImpactWaves.clear(); 
         
         if (networkModel != null) {
-            networkModel.resetSimulation(); // Resets to initial packet config *within the current model*
-                                          // but doesn't clear the systems/wires themselves.
-        }
+            networkModel.resetSimulation();        }
         
         System.out.println("GameModel: Switched to re-design mode. All snapshots cleared.");
         if (repaintCallback != null) repaintCallback.run();
         if (updateStatsCallback != null) updateStatsCallback.run();
     }
 
-    /**
-     * Restarts the current level from its initial state (snapshot 0).
-     * This is the action for "Try Again".
-     */
-    public void restartFromInitialSnapshot() {
+        public void restartFromInitialSnapshot() {
         if (gameLoopTimer != null) {
             gameLoopTimer.stop();
         }
-        gameRunning = false; // Set gameRunning to false to indicate a full stop/reset state
-        gamePaused = false;  // Ensure not paused
-        isTimeScrubbing = false; // Usually false when not actively playing/scrubbing a completed run
-        gameOverTriggered = false;
+        gameRunning = false;        gamePaused = false;        isTimeScrubbing = false;        gameOverTriggered = false;
         justGotGameOver = false;
-        // activeImpactWaves will be cleared by loading snapshot 0 if it stores them, or should be cleared
         activeImpactWaves.clear(); 
 
         if (history.containsKey(0)) {
-            loadSnapshot(0); // This restores networkModel and sets currentTimeStep to 0
-            this.currentTimeStep = 0; 
-            // After loading snapshot 0, which represents the initial configured state,
-            // explicitly call resetSimulation() to ensure all transient/sim-related lists are cleared.
+            loadSnapshot(0);            this.currentTimeStep = 0; 
             if (this.networkModel != null) {
                 this.networkModel.resetSimulation();
             }
             snapshotsReady = true; 
         } else {
-            // This is a problematic state - means we can't restart from snapshot 0.
-            // Fallback to a full redesign perhaps, or log an error.
             System.err.println("Error: Cannot restart from initial snapshot. Snapshot 0 not found. Performing full redesign.");
-            reDesign(); // Fallback to full redesign
-            return;
+            reDesign();            return;
         }
 
         System.out.println("GameModel: Level restarted from initial snapshot (Time Step 0).");
@@ -530,29 +412,19 @@ public class GameModel {
         if (updateStatsCallback != null) updateStatsCallback.run();
     }
 
-    /**
-     * Steps the simulation forward by one step. Used for manual control.
-     */
-    public void timeStepForward() {
+        public void timeStepForward() {
         if (gameRunning && gamePaused && snapshotsReady && !isTimeScrubbing && !shopOpen) {
             goToTimeStep(Math.min(maxTimeSteps, currentTimeStep + 1));
         }
     }
 
-    /**
-     * Steps the simulation backward by one step. Used for manual control.
-     */
-    public void timeStepBackward() {
+        public void timeStepBackward() {
         if (gameRunning && gamePaused && snapshotsReady && !isTimeScrubbing && !shopOpen) {
             goToTimeStep(Math.max(0, currentTimeStep - 1));
         }
     }
 
-    /**
-     * Jumps to a specific time step using pre-computed snapshots.
-     * @param targetStep The desired time step.
-     */
-    public void goToTimeStep(int targetStep) {
+        public void goToTimeStep(int targetStep) {
         if (gameRunning && gamePaused && snapshotsReady && !shopOpen) {
             if (targetStep >= 0 && targetStep <= maxTimeSteps) {
                 if (!snapshotsReady) {
@@ -560,7 +432,6 @@ public class GameModel {
                     return;
                 }
                 
-                // Pause automatic execution for manual navigation
                 boolean wasExecuting = gameRunning && !gamePaused;
                 if (wasExecuting) {
                     pauseExecution();
@@ -569,7 +440,6 @@ public class GameModel {
 
                 targetStep = Math.max(0, Math.min(maxTimeSteps, targetStep));
                 
-                // Load the pre-computed snapshot
                 loadSnapshot(targetStep);
                 
                 System.out.println("Loaded snapshot for time step: " + targetStep);
@@ -579,10 +449,7 @@ public class GameModel {
         }
     }
     
-    /**
-     * Loads a specific snapshot and updates the current game state.
-     */
-    private void loadSnapshot(int step) {
+        private void loadSnapshot(int step) {
         NetworkModelSnapshot snapshot = history.get(step);
         if (snapshot != null) {
             snapshot.restoreToModel(networkModel);
@@ -592,19 +459,12 @@ public class GameModel {
         }
     }
 
-    /**
-     * Prepares the initial packets in the source systems.
-     */
-    private void prepareInitialPackets() {
-        // This method now only adds packets if systems have no initial packets
-        // All initial packets should be set during system creation in MainFrame
+        private void prepareInitialPackets() {
         for (NetworkSystem ns : networkModel.getSystems()) {
             if (ns instanceof SourceNetworkSystem) {
                 SourceNetworkSystem sns = (SourceNetworkSystem) ns;
-                // Debug: Check current storage state
                 System.out.println("SourceSystem " + sns.getId() + " storage size: " + sns.getSenderStorage().size());
                 
-                // Only add fallback packets if absolutely no packets were provided
                 if (sns.getSenderStorage().isEmpty()) {
                     System.out.println("Warning: No initial packets provided for SourceSystem " + sns.getId() + ", adding minimal defaults");
                     sns.generateAndStorePacket(PacketAndPortShape.SQUARE, Packet.DEFAULT_RADIUS);
@@ -614,25 +474,15 @@ public class GameModel {
     }
 
 
-    /**
-     * Updates the game logic by one step or based on delta-time.
-     * Now includes collision detection and impact wave processing.
-     * @param isLiveRun If true, uses delta-time; otherwise, uses fixed steps.
-     */
-    private void updateGameLogic(boolean isLiveRun) {
+        private void updateGameLogic(boolean isLiveRun) {
         if (networkModel == null) return;
 
-        double speedFactor = 1.0; // Default for fixed steps
-        long simulatedTimeMillis;
+        double speedFactor = 1.0;        long simulatedTimeMillis;
 
         if(isLiveRun) {
             long currentTimeNanos = System.nanoTime();
-            if (lastUpdateTimeNanos == 0) lastUpdateTimeNanos = currentTimeNanos - (long)(GAME_UPDATE_DELAY * 1_000_000L); // Initialize if first time
-            long deltaTimeNanos = currentTimeNanos - lastUpdateTimeNanos;
-            long maxReasonableDeltaNanos = (long)GAME_UPDATE_DELAY * 1_000_000L * 5L; // Allow up to 5x delay
-            if (deltaTimeNanos <= 0L ) deltaTimeNanos = (long)GAME_UPDATE_DELAY * 1_000_000L; // If negative or zero, use ideal
-            if (deltaTimeNanos > maxReasonableDeltaNanos) deltaTimeNanos = maxReasonableDeltaNanos; // Cap max delta
-            
+            if (lastUpdateTimeNanos == 0) lastUpdateTimeNanos = currentTimeNanos - (long)(GAME_UPDATE_DELAY * 1_000_000L);            long deltaTimeNanos = currentTimeNanos - lastUpdateTimeNanos;
+            long maxReasonableDeltaNanos = (long)GAME_UPDATE_DELAY * 1_000_000L * 5L;            if (deltaTimeNanos <= 0L ) deltaTimeNanos = (long)GAME_UPDATE_DELAY * 1_000_000L;            if (deltaTimeNanos > maxReasonableDeltaNanos) deltaTimeNanos = maxReasonableDeltaNanos;            
             this.lastUpdateTimeNanos = currentTimeNanos;
             double idealFrameDurationNanos = (double)GAME_UPDATE_DELAY * 1_000_000.0;
             speedFactor = deltaTimeNanos / idealFrameDurationNanos;
@@ -641,12 +491,10 @@ public class GameModel {
             simulatedTimeMillis = (long)history.size() * GAME_UPDATE_DELAY;
         }
 
-        // 1. Attempt packet release
         for (NetworkSystem system : networkModel.getSystems()) {
             system.attemptPacketRelease(simulatedTimeMillis, networkModel);
         }
 
-        // 2. Update packet movement and physics
         List<Packet> packetsToProcess = new CopyOnWriteArrayList<>(networkModel.getPackets());
         for (Packet packet : packetsToProcess) {
 
@@ -666,16 +514,13 @@ public class GameModel {
                     continue;
                 }
 
-                // 1. Update packet's intended speed on wire (accel/decel based on current progress)
                 packet.updateCurrentSpeedOnWire(speedFactor, wire);
 
-                // 2. Calculate nominal movement vector along the wire
                 Point2D.Double wireDirStart = wire.getSourceAbsolutePosition();
                 Point2D.Double wireDirEnd = wire.getDestinationAbsolutePosition();
                 double dx = wireDirEnd.x - wireDirStart.x;
                 double dy = wireDirEnd.y - wireDirStart.y;
-                double wireActualLength = wire.getLength(); // Use the wire's actual length
-                
+                double wireActualLength = wire.getLength();                
                 Vector nominalMovementVector = new Vector(0,0);
                 if (wireActualLength > 0.001) {
                     double normalizedDx = dx / wireActualLength;
@@ -685,16 +530,12 @@ public class GameModel {
                                                        normalizedDy * nominalDistanceThisFrame);
                 }
 
-                // 3. Update packet position by this nominal movement along wire direction
                 Point2D.Double currentPos = packet.getPosition();
                 packet.setPosition(currentPos.getX() + nominalMovementVector.getX(), 
                                    currentPos.getY() + nominalMovementVector.getY());
 
-                // 4. Apply displacement from impacts (if any) and handle noise-related state changes.
-                // This will further modify packet.position.
                 packet.applyDisplacementAndNoiseEffects(); 
 
-                // 5. Check if packet was lost due to noise during applyDisplacementAndNoiseEffects()
                 if (packet.getState() == PacketState.LOST) {
                     if (!networkModel.getLostPackets().contains(packet)) {
                         networkModel.addLostPacket(packet); 
@@ -703,20 +544,15 @@ public class GameModel {
                     continue; 
                 }
 
-                // 6. Update packet's progressOnWire based on its NEW final position
                 double newProgress = wire.calculateProgress(packet.getPosition());
                 packet.setProgressOnWire(newProgress);
                 
-                // 7. Check for arrival at destination port
-                // Arrival means progress is >= 1.0 AND it's still considered "on the wire" enough to snap to port.
                 if (packet.getProgressOnWire() >= 1.0) {
-                    if (CollisionDetector.isPacketNearPort(packet, targetPort, wire)) { // New check needed
-                        Point2D.Double destPortAbsPos = wire.getDestinationAbsolutePosition();
+                    if (CollisionDetector.isPacketNearPort(packet, targetPort, wire)) {                        Point2D.Double destPortAbsPos = wire.getDestinationAbsolutePosition();
                         packet.setPosition(destPortAbsPos.x, destPortAbsPos.y);
                         packet.setProgressOnWire(1.0); 
                         packet.setState(PacketState.ARRIVED_AT_PORT); 
-                        packet.setCurrentSpeed(0.0); // Explicitly stop speed
-                        
+                        packet.setCurrentSpeed(0.0);                        
                         if (originPort != null) originPort.setInUse(false);
                         NetworkSystem destSystem = targetPort.getNetworkSystem();
                         if (destSystem != null) {
@@ -731,16 +567,11 @@ public class GameModel {
                         }
                         continue; 
                     } else {
-                        // Progress is >=1.0, but it's too far from the wire/port (e.g., flew past significantly off-course)
-                        // Consider it lost or let it continue drifting if that's desired (currently will be marked lost below if off wire)
                     }
                 }
 
-                // 8. If not arrived, check if packet is still on the wire after all movements
                 if (!CollisionDetector.isPacketStillOnWire(packet)) {
-                    packet.setKnockedOffWire(true); // Ensure this flag is set
-                    packet.applyWorldFriction();    // Apply friction if off-wire
-                    
+                    packet.setKnockedOffWire(true);                    packet.applyWorldFriction();                    
                     packet.setState(PacketState.LOST);
                     packet.freeOriginPort(); 
                     if (!networkModel.getLostPackets().contains(packet)) {
@@ -751,8 +582,7 @@ public class GameModel {
                 }
 
             } else if (packet.getState() != PacketState.LOST && packet.getState() != PacketState.DELIVERED) {
-                 packet.applyDisplacementAndNoiseEffects(); // For non-ON_WIRE packets, still apply these effects
-                 if (packet.getState() == PacketState.LOST) { 
+                 packet.applyDisplacementAndNoiseEffects();                 if (packet.getState() == PacketState.LOST) { 
                     if (!networkModel.getLostPackets().contains(packet)) {
                         networkModel.addLostPacket(packet);
                         SoundManager.playSound(SoundManager.SoundEffect.PACKET_DAMAGE);
@@ -761,43 +591,31 @@ public class GameModel {
             }
         }
         
-        // 3. Collision Detection and Processing
         processCollisions(isLiveRun, simulatedTimeMillis);
         
-        // 4. Update Impact Waves
         updateImpactWaves();
         
-        // 5. Increment time step
         if(isLiveRun) {
             currentTimeStep++;
         } else if (!isLiveRun) {
-            currentTimeStep++; // Also increment when simulating step-by-step
-        }
+            currentTimeStep++;        }
     }
 
-    /**
-     * Processes collisions between packets and creates impact waves
-     */
-    private void processCollisions(boolean isLiveRun, long simulatedTimeMillis) {
+        private void processCollisions(boolean isLiveRun, long simulatedTimeMillis) {
         if (!collisionDetectionEnabled) return;
         
         long currentTimeForCheck;
         if (isLiveRun) {
             currentTimeForCheck = System.currentTimeMillis();
             if (currentTimeForCheck - lastCollisionCheckTime < COLLISION_CHECK_INTERVAL) {
-                return; // Skip collision detection this frame for live run
-            }
-        } else { // Snapshot generation
-            currentTimeForCheck = simulatedTimeMillis;
-            // Skip if simulated time hasn't advanced enough since last check,
-            // but always check for the first few steps (e.g. if lastCollisionCheckTime is 0 or very small).
+                return;            }
+        } else {            currentTimeForCheck = simulatedTimeMillis;
             if (lastCollisionCheckTime != 0 && (currentTimeForCheck - lastCollisionCheckTime < COLLISION_CHECK_INTERVAL)) {
                 return; 
             }
         }
         lastCollisionCheckTime = currentTimeForCheck;
         
-        // Get only packets that are actively moving (ON_WIRE)
         List<Packet> movingPackets = new ArrayList<>();
         for (Packet packet : networkModel.getPackets()) {
             if (packet.getState() == PacketState.ON_WIRE && !packet.isKnockedOffWire()) {
@@ -807,18 +625,14 @@ public class GameModel {
         
         if (movingPackets.size() < 2) return;
         
-        // Use existing collision detector
         List<List<Packet>> collisionPairs = CollisionDetector.detectCollisions(movingPackets);
         
-        // Process each collision
         for (List<Packet> pair : collisionPairs) {
             if (pair.size() == 2) {
                 CollisionEvent collision = new CollisionEvent(pair.get(0), pair.get(1));
                 
-                // Process immediate collision effects (noise, separation forces)
                 collision.processCollision();
                 
-                // Create impact wave if enabled
                 if (impactWavesEnabled) {
                     ImpactWave wave = collision.createImpactWave();
                     activeImpactWaves.add(wave);
@@ -829,22 +643,17 @@ public class GameModel {
         }
     }
     
-    /**
-     * Updates all active impact waves and applies their forces to nearby packets
-     */
-    private void updateImpactWaves() {
+        private void updateImpactWaves() {
         if (!impactWavesEnabled) {
             activeImpactWaves.clear();
             return;
         }
         
-        // Update wave expansion and remove inactive waves
         activeImpactWaves.removeIf(wave -> {
             wave.update();
             return !wave.isActive();
         });
         
-        // Apply wave forces to packets
         for (Packet packet : networkModel.getPackets()) {
             if (packet.getState() == PacketState.ON_WIRE) {
                 for (ImpactWave wave : activeImpactWaves) {
@@ -857,10 +666,7 @@ public class GameModel {
         }
     }
 
-    /**
-     * Pauses the execution without stopping the timer.
-     */
-    public void pauseExecution() {
+        public void pauseExecution() {
         if (!snapshotsReady || !gameRunning || shopOpen) return;
         if (!gamePaused) {
             gamePaused = true;
@@ -873,42 +679,34 @@ public class GameModel {
         }
     }
 
-    /**
-     * Resumes the execution from pause.
-     */
-    public void resumeExecution() {
+        public void resumeExecution() {
         if (!snapshotsReady || !gameRunning || shopOpen) return;
         if (gamePaused) {
             gamePaused = false;
             if (gameLoopTimer != null) {
                 gameLoopTimer.start();
             }
-            lastUpdateTimeNanos = System.nanoTime(); // Reset timing to avoid large delta
-            System.out.println("GameModel: Execution resumed at step " + currentTimeStep);
+            lastUpdateTimeNanos = System.nanoTime();            System.out.println("GameModel: Execution resumed at step " + currentTimeStep);
             if (repaintCallback != null) repaintCallback.run();
             if (updateStatsCallback != null) updateStatsCallback.run();
         }
     }
 
-    // --- Inner Class for Snapshots ---
     private static class NetworkModelSnapshot {
         private final List<Packet> activePackets;
         private final List<Packet> deliveredPackets;
         private final List<Packet> lostPackets;
         private final int playerCoins;
         
-        // Store system states (for source systems: sender storage, for non-source: internal storage)
         private final Map<String, List<Packet>> systemStorages;
         private final Map<String, Long> systemLastReleaseTime;
 
         NetworkModelSnapshot(NetworkModel modelToCopy) {
-            // Deep copy packet lists
             this.activePackets = deepCopyPacketList(modelToCopy.getPackets());
             this.deliveredPackets = deepCopyPacketList(modelToCopy.getDeliveredPackets());
             this.lostPackets = deepCopyPacketList(modelToCopy.getLostPackets());
             this.playerCoins = modelToCopy.getPlayerCoins();
             
-            // Store system-specific states
             this.systemStorages = new HashMap<>();
             this.systemLastReleaseTime = new HashMap<>();
             
@@ -933,7 +731,6 @@ public class GameModel {
         }
         
         private Packet deepCopyPacket(Packet original) {
-            // Create packet with Point2D.Double, using original's Point2D.Double
             Packet copy = new Packet(new Point2D.Double(original.getPosition().getX(), original.getPosition().getY()), 
                                    original.getShape(), 
                                    original.getRadius());
@@ -943,21 +740,16 @@ public class GameModel {
             copy.setOriginPort(original.getOriginPort());
             copy.setProgressOnWire(original.getProgressOnWire());
             copy.setNetworkSystem(original.getNetworkSystem());
-            copy.setNoise(original.getNoise()); // Copy noise level
-            copy.setKnockedOffWire(original.isKnockedOffWire()); // Copy knocked off state
-            return copy;
+            copy.setNoise(original.getNoise());            copy.setKnockedOffWire(original.isKnockedOffWire());            return copy;
         }
         
         void restoreToModel(NetworkModel model) {
-            // Clear current state
             model.getPackets().clear();
             model.getDeliveredPackets().clear();
             model.getLostPackets().clear();
             
-            // Restore player coins first
             model.setPlayerCoins(this.playerCoins);
             
-            // Restore packet lists
             for (Packet p : activePackets) {
                 model.addPacketToActiveList(deepCopyPacket(p));
             }
@@ -968,7 +760,6 @@ public class GameModel {
                 model.addLostPacket(deepCopyPacket(p));
             }
             
-            // Restore system states
             for (NetworkSystem system : model.getSystems()) {
                 if (system instanceof SourceNetworkSystem) {
                     SourceNetworkSystem source = (SourceNetworkSystem) system;
@@ -1007,7 +798,6 @@ public class GameModel {
                     system.lastPacketReleaseTimeMillis = lastReleaseTime;
                 }
                 
-                // Reset port usage states
                 for (Port port : system.getAllPorts()) {
                     port.setInUse(false);
                 }

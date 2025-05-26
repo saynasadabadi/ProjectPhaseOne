@@ -107,17 +107,8 @@ public class CollisionDetector {
         }
     }
 
-    /**
-     * Checks if a packet is still considered to be on its wire.
-     * A packet is on the wire if its center is within its radius plus a small tolerance
-     * from the wire's line segment.
-     * @param packet The packet to check.
-     * @return True if the packet is on its wire, false otherwise.
-     */
-    public static boolean isPacketStillOnWire(Packet packet) {
+        public static boolean isPacketStillOnWire(Packet packet) {
         if (packet == null || packet.getCurrentWire() == null || packet.getState() != PacketState.ON_WIRE) {
-            // If not on a wire, or no wire assigned, it can't be "on the wire".
-            // Or if it's not in a state where it should be on a wire.
             return false;
         }
         Wire wire = packet.getCurrentWire();
@@ -134,71 +125,38 @@ public class CollisionDetector {
 
         if (wireStart == null || wireEnd == null) return false;
 
-        // Calculate distance from packet center to the line segment of the wire
         double dist = distanceToLineSegment(packetCenter.getX(), packetCenter.getY(), wireStart.x, wireStart.y, wireEnd.x, wireEnd.y);
 
-        // Packet's edge can be at most a small tolerance away from the wire line.
-        // Let's define tolerance as a fraction of its radius, e.g., 0.5 * radius.
-        // This means the packet's main body must still significantly overlap the wire's path.
-        double tolerance = packetRadius; // Packet's center must be within its radius of the wire line.
-        return dist <= tolerance; // If distance from center to line is less than or equal to radius, it's "on"
-    }
+        double tolerance = packetRadius;        return dist <= tolerance;    }
 
-    // Helper method: Distance from point (px, py) to line segment (x1, y1) - (x2, y2)
     private static double distanceToLineSegment(double px, double py, double x1, double y1, double x2, double y2) {
-        double l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1); // Squared length of the segment
-        if (l2 == 0.0) return Math.sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1)); // Segment is a point
-
-        // Consider the line extending the segment, parameterized as P = P1 + t (P2 - P1).
-        // We find projection of point P onto the line.
-        // t = [(P-P1) . (P2-P1)] / |P2-P1|^2
+        double l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);        if (l2 == 0.0) return Math.sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1));
         double t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
 
-        // If the projection is outside the segment, clamp t to the nearest endpoint.
         t = Math.max(0, Math.min(1, t));
 
-        // Coordinates of the closest point on the segment to P
         double closestX = x1 + t * (x2 - x1);
         double closestY = y1 + t * (y2 - y1);
 
-        // Distance from P to this closest point
         double dx = px - closestX;
         double dy = py - closestY;
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    /**
-     * Checks if a packet, which has nominally reached the end of a wire (progress >= 1.0),
-     * is close enough to the target port to be considered a valid arrival.
-     * @param packet The packet.
-     * @param targetPort The target port.
-     * @param wire The wire the packet is on.
-     * @return True if the packet is close enough to the port for arrival, false otherwise.
-     */
-    public static boolean isPacketNearPort(Packet packet, Port targetPort, Wire wire) {
+        public static boolean isPacketNearPort(Packet packet, Port targetPort, Wire wire) {
         if (packet == null || targetPort == null || wire == null || packet.getPosition() == null) {
             return false;
         }
         Point2D.Double packetPos = packet.getPosition();
-        Point2D.Double portPos = targetPort.getAbsolutePositionAsPoint2D(); // Assuming Port has this
-
-        // Check distance from packet center to port center
+        Point2D.Double portPos = targetPort.getAbsolutePositionAsPoint2D();
         double distanceToPortCenter = packetPos.distance(portPos);
 
-        // Allow arrival if packet center is within, say, 1.5 times its radius from port center.
-        // This gives some leeway for slight overshoots or displacements at the very end.
         double arrivalTolerance = packet.getRadius() * 1.5; 
 
         if (distanceToPortCenter > arrivalTolerance) {
-            return false; // Too far from port center
-        }
+            return false;        }
 
-        // Additionally, ensure the packet is still generally aligned with the wire's end,
-        // not just near the port but having come from a completely different angle.
-        // This reuses a simplified version of isPacketStillOnWire logic, focusing on the endpoint.
-        // The distance from packet to wire segment should still be small.
-        double toleranceForWireAlignment = packet.getRadius() * 2.0; // Slightly more generous than strict on-wire
-        
+        double toleranceForWireAlignment = packet.getRadius() * 2.0;        
         Point2D.Double wireStart = wire.getSourceAbsolutePosition();
         Point2D.Double wireEnd = wire.getDestinationAbsolutePosition();
 

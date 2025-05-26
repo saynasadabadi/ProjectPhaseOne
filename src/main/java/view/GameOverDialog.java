@@ -6,26 +6,24 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import utils.SoundManager;
 
-/**
- * Dialog displayed when game over condition is met (packet loss > 50%)
- */
+
 public class GameOverDialog extends JDialog {
-    // private boolean restartRequested = false; // Not strictly needed if actions are direct
-    private boolean returnToMenuClicked = false; // Flag for panel to check
-    private controller.NetworkController controller; // Store controller reference
+
+    private boolean returnToMenuClicked = false;
+    private controller.NetworkController controller;
     
     public GameOverDialog(Frame parent, double packetLossPercentage, int deliveredPackets, int lostPackets, int coins, controller.NetworkController controller) {
-        super(parent, "Game Over", true); // Make it MODAL to simplify flow
-        this.controller = controller; // Store controller
+        super(parent, "Game Over", true);
+        this.controller = controller;
         
         setupDialog(packetLossPercentage, deliveredPackets, lostPackets, coins);
     }
     
     private void setupDialog(double lossPercentage, int delivered, int lost, int coins) {
         setLayout(new BorderLayout());
-        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE); // Allow user to close with 'X'
+        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         
-        // Title panel
+
         JPanel titlePanel = new JPanel();
         titlePanel.setBackground(Color.RED.darker());
         JLabel titleLabel = new JLabel("GAME OVER", JLabel.CENTER);
@@ -33,7 +31,7 @@ public class GameOverDialog extends JDialog {
         titleLabel.setForeground(Color.WHITE);
         titlePanel.add(titleLabel);
         
-        // Stats panel
+
         JPanel statsPanel = new JPanel(new GridLayout(5, 1, 5, 5));
         statsPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         
@@ -49,9 +47,9 @@ public class GameOverDialog extends JDialog {
         
         JLabel coinsLabel = new JLabel(String.format("Coins Earned: %d", coins), JLabel.CENTER);
         coinsLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
-        coinsLabel.setForeground(new Color(255, 215, 0)); // Gold color
+        coinsLabel.setForeground(new Color(255, 215, 0));
         
-        // Calculate a simple score
+
         int score = Math.max(0, delivered * 10 - lost * 5 + coins);
         JLabel scoreLabel = new JLabel(String.format("Final Score: %d", score), JLabel.CENTER);
         scoreLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
@@ -63,7 +61,7 @@ public class GameOverDialog extends JDialog {
         statsPanel.add(coinsLabel);
         statsPanel.add(scoreLabel);
         
-        // Button panel
+
         JPanel buttonPanel = new JPanel(new FlowLayout());
         
         JButton restartButton = new JButton("Try Again");
@@ -71,7 +69,7 @@ public class GameOverDialog extends JDialog {
         restartButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                // Action is now handled by NetworkPanel after dialog is shown
+
                 if (GameOverDialog.this.controller != null) {
                     GameOverDialog.this.controller.restartLevel();
                 }
@@ -85,38 +83,36 @@ public class GameOverDialog extends JDialog {
             @Override
             public void actionPerformed(ActionEvent e) {
                 returnToMenuClicked = true;
-                dispose(); // Dispose the GameOverDialog itself
+                dispose();
             }
         });
         
         buttonPanel.add(restartButton);
         buttonPanel.add(menuButton);
         
-        // Add panels to dialog
+
         add(titlePanel, BorderLayout.NORTH);
         add(statsPanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
         
-        // Configure dialog
+
         pack();
         setLocationRelativeTo(getParent());
         setResizable(false);
     }
     
     public boolean isRestartRequested() {
-        // This can be inferred by controller action if dialog is modal
-        return false; // Or could be set if Try Again is clicked, if needed elsewhere
+
+        return false;
     }
     
     public boolean isReturnToMenuClicked() {
         return returnToMenuClicked;
     }
     
-    /**
-     * Shows the dialog (modal)
-     */
-    public void showDialog() { // Return type void now
-        // For modal dialog, setVisible(true) will block until dialog is disposed.
+    
+    public void showDialog() {
+
         setVisible(true);
     }
 } 
